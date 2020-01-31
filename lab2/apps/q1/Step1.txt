@@ -12,4 +12,4 @@ Explain how sem_signal and sem_wait work.
  - sem_signal first disables the interrupts and restores them at the end like sem_wait to ensure the function call is an atomic operation. The function then increments the count and if the count is greater than 0, it dequeues a process off the semaphore's waiting queue and wakes it up. 
 
 What is a handle and how is it used to access semaphores in DLXOS?
-** - Is a pointer to the semaphore. Have to pass pointer or "handle" to sem_signal or sem_wait to operate it.  
+ - A handle is the integer index of the semaphore being used within the semaphore array. And the semaphore is used by indexing into the semaphore array using the handle passed to sem_signal or sem_wait.
