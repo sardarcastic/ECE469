@@ -42,7 +42,7 @@ void main (int argc, char *argv[])
   // Put some values in the shared memory, to be read by other processes
   cb->head = 0;
   cb->tail = 0;
-  cb->buff = &(cb->buff) + 1;
+  //cb->buff = &(cb->buff) + 1;
 
   // Create semaphore to not exit this process until all other processes 
   // have signalled that they are complete.  To do this, we will initialize
