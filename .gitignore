@@ -5,3 +5,4 @@
 *.lst
 *.zip
 */work/*
+*.depend

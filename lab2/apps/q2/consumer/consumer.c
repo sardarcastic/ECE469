@@ -37,13 +37,12 @@ void main (int argc, char *argv[])
       Printf("Bad lock cbuff_lock (%d) in ", cbuff_lock); Printf(argv[0]); Printf(", exiting...\n");
     }
 
-    if ((cb->head + 1) % BUFFERSIZE == cb->tail) {
+    if (cb->tail == cb->head) {
       i--;
     }
     else {
-      Printf("Producer %d inserted: %c \n", getpid(), message[i]);
-      cb->buff[cb->head % BUFFERSIZE] = message[i];
-      cb->head++;
+      Printf("Consumer %d removed: %c \n", getpid(), cb->buff[cb->tail % BUFFERSIZE]);
+      cb->tail++;
     }
 
     if (lock_release(cbuff_lock) != SYNC_SUCCESS) {

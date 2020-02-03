@@ -4,7 +4,7 @@
 typedef struct circular_buffer {
   int head;
   int tail;
-  char * buffer; 
+  char * buff; 
 } circular_buffer;
 
 #define PRODUCER_TO_RUN "producer.dlx.obj"
