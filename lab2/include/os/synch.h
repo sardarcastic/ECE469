@@ -66,6 +66,7 @@ typedef struct Cond {
 int CondInit(Cond *);
 int CondWait(Cond *);
 int CondSignal(Cond *);
+int CondBroadcast(Cond *);
 
 int SynchModuleInit();
 
