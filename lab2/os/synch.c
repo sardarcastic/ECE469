@@ -349,7 +349,7 @@ cond_t CondCreate(lock_t lock) {
 
   if (cond == MAX_CONDS) return INVALID_COND;
 
-  if (CondInit(&conds[cond]) != SYNC_SUCESS) return INVALID_COND;
+  if (CondInit(&conds[cond]) != SYNC_SUCCESS) return INVALID_COND;
   return cond;
 }
 
@@ -393,7 +393,7 @@ int CondHandleWait(cond_t c) {
   if (!conds[c].inuse) return SYNC_FAIL;
   if (locks[conds[c].lock].pid != GetCurrentPid()) return SYNC_FAIL;
 
-  return CondWait(&conds[cond]);
+  return CondWait(&conds[c]);
 }
 
 int CondWait(Cond* cond){
@@ -404,7 +404,7 @@ int CondWait(Cond* cond){
 
   intrval = DisableIntrs();
   dbprintf ('I', "CondWait: Old interrupt value was 0x%x.\n", intrval);
-  dbprintf ('s', "CondWait: Proc %d waiting on sem %d, count=%d.\n", GetCurrentPid(), (int)(sem-sems), sem->count);
+  dbprintf ('s', "CondWait: Proc %d waiting on cond %d\n", GetCurrentPid(), (int)(cond-conds));
 
   dbprintf('s', "CondWait: putting process %d to sleep\n", GetCurrentPid());
   if ((l = AQueueAllocLink ((void *)currentPCB)) == NULL) {
@@ -450,7 +450,7 @@ int CondHandleSignal(cond_t c) {
   if (!conds[c].inuse) return SYNC_FAIL;
   if (locks[conds[c].lock].pid != GetCurrentPid()) return SYNC_FAIL;
 
-  return CondSignal(&conds[cond]);
+  return CondSignal(&conds[c]);
 }
 
 int CondSignal(Cond* cond){
@@ -461,7 +461,7 @@ int CondSignal(Cond* cond){
   if (!cond) return SYNC_FAIL;
 
   intrs = DisableIntrs();
-  dbprintf ('s', "CondSignal: Process %d Signalling on cond %d \n", GetCurrentPid(), (int)(sem-sems));
+  dbprintf ('s', "CondSignal: Process %d Signalling on cond %d \n", GetCurrentPid(), (int)(cond-conds));
   if (!AQueueEmpty(&cond->waiting)) { // there is a process to wake up
     l = AQueueFirst(&cond->waiting);
     pcb = (PCB *)AQueueObject(l);
@@ -524,6 +524,6 @@ int CondHandleBroadcast(cond_t c) {
   if (!conds[c].inuse) return SYNC_FAIL;
   if (locks[conds[c].lock].pid != GetCurrentPid()) return SYNC_FAIL;
 
-  return CondBroadcast(&conds[cond]);
+  return CondBroadcast(&conds[c]);
   return SYNC_SUCCESS;
 }
