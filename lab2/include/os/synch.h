@@ -19,6 +19,8 @@
 #define SYNC_FAIL -1    // Used as return values from most synchronization functions.
 #define SYNC_SUCCESS 1  // Note that many functions return a handle, hence the -1 value
                         // for failure.
+#define COND_FAIl 1
+#define COND_SUCCESS 0
 
 #define MAX_SEMS	32	//Maximum 32 semaphores allowed in the system
 #define MAX_LOCKS	64	//Maximum 64 locks allowed in the system
@@ -56,7 +58,9 @@ int LockAcquire(Lock *);
 int LockRelease(Lock *);
 
 typedef struct Cond {
-  // Your code goes here
+  Queue waiting;
+  lock_t lock;
+  int inuse;
 } Cond;
 
 int CondInit(Cond *);
