@@ -1,15 +1,11 @@
 #ifndef __USERPROG__
 #define __USERPROG__
 
-#include "lab2-api.h"
+typedef struct missile_code {
+  int numprocs;
+  char really_important_char;
+} missile_code;
 
-typedef struct circular_buffer {
-  int head;
-  int tail;
-  char buff[BUFFERSIZE]; 
-} circular_buffer;
-
-#define PRODUCER_TO_RUN "producer.dlx.obj"
-#define CONSUMER_TO_RUN "consumer.dlx.obj"
+#define FILENAME_TO_RUN "spawn_me.dlx.obj"
 
 #endif
