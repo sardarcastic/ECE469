@@ -57,18 +57,18 @@ mbox_t MboxCreate() {
 
   if (mbox == MBOX_NUM_MBOXES) return MBOX_FAIL;
 
-  if ((mboxes[mbox].lock = lock_create()) == SYNC_FAIL) {
-    printf("Lock failed to create for mbox %d for process %d\n", mbox, getpid());
+  if ((mboxes[mbox].lock = LockCreate()) == SYNC_FAIL) {
+    printf("Lock failed to create for mbox %d for process %d\n", mbox, GetCurrentPid());
     return MBOX_FAIL;
   }
   
-  if ((mboxes[mbox].not_full = cond_create(mboxes[i].lock)) == SYNC_FAIL) {
-    printf("NOT FULL CondVar failed to create for mbox %d for process %d\n", mbox, getpid());
+  if ((mboxes[mbox].not_full = CondCreate(mboxes[mbox].lock)) == SYNC_FAIL) {
+    printf("NOT FULL CondVar failed to create for mbox %d for process %d\n", mbox, GetCurrentPid());
     return MBOX_FAIL;
   }
 
-  if ((mboxes[mbox].not_empty = cond_create(mboxes[i].lock)) == SYNC_FAIL) {
-    printf("NOT EMPTY CondVar failed to create for mbox %d for process %d\n", mbox, getpid());
+  if ((mboxes[mbox].not_empty = CondCreate(mboxes[mbox].lock)) == SYNC_FAIL) {
+    printf("NOT EMPTY CondVar failed to create for mbox %d for process %d\n", mbox, GetCurrentPid());
     return MBOX_FAIL;
   }
 
@@ -77,8 +77,8 @@ mbox_t MboxCreate() {
     return MBOX_FAIL;
   }
 
-  if (j = 0; j < PROCESS_MAX_PROCS; j++) {
-    mbox[mbox].procs[j] = 0;
+  for (j = 0; j < PROCESS_MAX_PROCS; j++) {
+    mboxes[mbox].procs[j] = 0;
   }
 
   return mbox;
@@ -99,14 +99,14 @@ mbox_t MboxCreate() {
 //
 //-------------------------------------------------------
 int MboxOpen(mbox_t handle) {
-  int mypid = getpid();
-  if (lock_acquire(mboxes[handle].lock) != SYNC_SUCCESS) {
+  int mypid = GetCurrentPid();
+  if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
     return MBOX_FAIL;
   }
 
   mboxes[handle].procs[mypid] = 1;
 
-  lock_release(mboxes[handle].lock);
+  LockHandleRelease(mboxes[handle].lock);
 
   return MBOX_SUCCESS;
 }
@@ -128,11 +128,11 @@ int MboxClose(mbox_t handle) {
   int i;
   int usedflag = 0;
   Link * l;
-  if (lock_acquire(mboxes[handle].lock) != SYNC_SUCCESS) {
+  if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
     return MBOX_FAIL;
   }
 
-  mboxes[handle].procs[getpid()] = 0;
+  mboxes[handle].procs[GetCurrentPid()] = 0;
 
   for (i = 0; i < PROCESS_MAX_PROCS; i++) {
     if (mboxes[handle].procs[i] != 0) {
@@ -147,7 +147,7 @@ int MboxClose(mbox_t handle) {
     AQueueRemove(&l);
   }
 
-  lock_release(mboxes[handle].lock);
+  LockHandleRelease(mboxes[handle].lock);
   return MBOX_SUCCESS;
 }
 
@@ -169,21 +169,21 @@ int MboxClose(mbox_t handle) {
 //-------------------------------------------------------
 int MboxSend(mbox_t handle, int length, void* message) {
   int i = 0;
-  int mypid = getpid();
+  int mypid = GetCurrentPid();
   Link * msg_link;
   uint32 intrval;
 
-  if (lock_acquire(mboxes[handle].lock) != SYNC_SUCCESS) {
+  if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
     return MBOX_FAIL;
   }
 
   if (mboxes[handle].procs[mypid] != 1) {
-    lock_release(mboxes[handle].lock);
+    LockHandleRelease(mboxes[handle].lock);
     return MBOX_FAIL;
   }
 
   while (AQueueLength(&mboxes[handle].msg_queue) >= MBOX_MAX_BUFFERS_PER_MBOX || i == MBOX_NUM_BUFFERS) {
-    cond_wait(mboxes[handle].not_full);
+    CondHandleWait(mboxes[handle].not_full);
 
     intrval = DisableIntrs();
     for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
@@ -195,8 +195,8 @@ int MboxSend(mbox_t handle, int length, void* message) {
     RestoreIntrs(intrval);
   }
 
-  if (length > MBOX_MAX_BUFFER_LENGTH) {
-    lock_release(mboxes[handle].lock);
+  if (length > MBOX_MAX_MESSAGE_LENGTH) {
+    LockHandleRelease(mboxes[handle].lock);
     return MBOX_FAIL;
   }
   bcopy(message, mbox_messages[i].buffer, length);
@@ -208,12 +208,12 @@ int MboxSend(mbox_t handle, int length, void* message) {
   }
 
   if (AQueueInsertLast(&mboxes[handle].msg_queue, msg_link) != QUEUE_SUCCESS) {
-    print("FATAL ERROR: MboxSend can't add message to queue PID %d\n", mypid);
+    printf("FATAL ERROR: MboxSend can't add message to queue PID %d\n", mypid);
     exitsim();
   }
 
-  cond_signal(mboxes[handle].not_empty);
-  lock_release(mboxes[handle].lock);
+  CondHandleSignal(mboxes[handle].not_empty);
+  LockHandleRelease(mboxes[handle].lock);
 
   return MBOX_SUCCESS;
 }
@@ -235,40 +235,38 @@ int MboxSend(mbox_t handle, int length, void* message) {
 //
 //-------------------------------------------------------
 int MboxRecv(mbox_t handle, int maxlength, void* message) {
-  int i = 0;
-  int mypid = getpid();
+  int mypid = GetCurrentPid();
   Link * msg_link;
   mbox_message * msg;
-  uint32 intrval;
 
-  if (lock_acquire(mboxes[handle].lock) != SYNC_SUCCESS) {
+  if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
     return MBOX_FAIL;
   }
 
   if (mboxes[handle].procs[mypid] != 1) {
-    lock_release(mboxes[handle].lock);
+    LockHandleRelease(mboxes[handle].lock);
     return MBOX_FAIL;
   }
 
   while (AQueueEmpty(&mboxes[handle].msg_queue) == 0) {
-    cond_wait(mboxes[handle].not_empty);
+    CondHandleWait(mboxes[handle].not_empty);
   }
 
   msg_link = AQueueFirst(&mboxes[handle].msg_queue);
   msg = (mbox_message *) AQueueObject(msg_link);
   if (msg->length > maxlength) {
-    lock_release(mboxes[handle].lock);
+    LockHandleRelease(mboxes[handle].lock);
     return MBOX_FAIL;
   }
-  bcopy(msg->buffer, messages, msg->length);
+  bcopy(msg->buffer, message, msg->length);
   
   if (AQueueRemove(&msg_link) != QUEUE_SUCCESS) {
     printf("FATAL ERROR MboxRecv no remove link PID %d\n", mypid);
     exitsim();
   }
 
-  cond_signal(mboxes[handle].not_full);
-  lock_release(mboxes[handle].lock);
+  CondHandleSignal(mboxes[handle].not_full);
+  LockHandleRelease(mboxes[handle].lock);
 
   return MBOX_FAIL;
 }
@@ -287,15 +285,27 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
 //--------------------------------------------------------------------------------
 int MboxCloseAllByPid(int pid) {
   int i;
-  
+  int j;
+  int box_in_use = 0;
   for (i = 0; i < MBOX_NUM_MBOXES; i++) {
-    if (mbox[i].inuse == 1) {
-&& lock_acquire(mbox[i].lock) != SYNC_SUCCESS) 
-      return MBOX_FAIL;
-    }
-    else { 
-      lock_release(mbox[i].lock);
+    if (mboxes[i].inuse == 1) {
+      
+      if (LockHandleAcquire(mboxes[i].lock) != SYNC_SUCCESS) 
+	return MBOX_FAIL;
+      box_in_use = 0;
+
+      mboxes[i].procs[pid] = 0;
+      for (j = 0; j < PROCESS_MAX_PROCS ; j++)     {
+	if (mboxes[i].procs[j] != 0){
+	  box_in_use = 1;
+	  break;
+	}
+      }
+      
+      if (box_in_use == 0)
+	mboxes[i].inuse = 0;
     }
   }
-  return MBOX_FAIL;
+  
+  return MBOX_SUCCESS;
 }
