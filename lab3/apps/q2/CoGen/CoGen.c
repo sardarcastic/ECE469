@@ -24,6 +24,7 @@ void main (int argc, char *argv[])
     Printf("Failed to send a message in CoGen. PID %d\n", getpid());
   }
 
-  Printf("Cogen PID: %d\n", getpid());
+  Printf("CO injected into Radeon atmosphere, PID: %d\n", getpid());
+
   Exit();
 }

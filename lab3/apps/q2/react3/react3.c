@@ -39,14 +39,11 @@ void main (int argc, char *argv[])
     Printf("Failed to receive a message in react3. PID %d\n", getpid());
     Exit();
   }
-  Printf("received S PID %d\n", getpid());
   for (i = 0; i<2; i++){
-    Printf("mboxrecv o2 react3\n");
     flag = mbox_recv(o2_mbox, 0, (void*)&receiving);
-    Printf("react3 02 flag %d\n", flag);
     if(flag == MBOX_FAIL){
       Printf("Failed to receive a O2 message in react3. PID %d\n", getpid());
-      //Exit();
+      Exit();
     }
   }
   //Sending 1 message to So4 mbox 
@@ -54,5 +51,7 @@ void main (int argc, char *argv[])
     Printf("Failed to send a message in react3. PID %d\n", getpid());
   }
   
+  Printf("S + 2 O2 -> SO4 reacted, PID: %d\n", getpid());
+
   Exit();
 }

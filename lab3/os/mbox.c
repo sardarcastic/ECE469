@@ -241,14 +241,12 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
   mbox_message * msg;
 
   if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
-    printf("fail1\n");
     return MBOX_FAIL;
   }
 
   if (mboxes[handle].procs[mypid] != 1) {
     LockHandleRelease(mboxes[handle].lock);
-    printf("fail2\n");
-    return -2;
+    return MBOX_FAIL;
   }
 
   while (AQueueEmpty(&mboxes[handle].msg_queue) == 1) {
@@ -257,11 +255,9 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
 
   msg_link = AQueueFirst(&mboxes[handle].msg_queue);
   msg = (mbox_message *) AQueueObject(msg_link);
-  printf("msglength %d\n", msg->length);
   if (msg->length > maxlength) {
     LockHandleRelease(mboxes[handle].lock);
-    printf("fail3\n");
-    return -3;
+    return MBOX_FAIL;
   }
   bcopy(msg->buffer, message, msg->length);
   
@@ -310,7 +306,6 @@ int MboxCloseAllByPid(int pid) {
       
       if (box_in_use == 0) {
 	mboxes[i].inuse = 0;
-        printf("Closing mailbox\n");
       } 
       LockHandleRelease(mboxes[i].lock);
     }

@@ -42,11 +42,9 @@ void main (int argc, char *argv[])
       Exit();
     }
   }
-  Printf("recieved Co2s react2\n");
   //Sending 2 messages to o2_mbox and C2_mbox
   for (i = 0; i <2; i++){ 
     flag = mbox_send(o2_mbox, 0, (void*)&sending);
-    Printf("react2 O2 send %d\n", flag);
     if (flag == MBOX_FAIL)
       Printf("Failed to send a message in react2. PID %d\n", getpid());
   }
@@ -54,6 +52,8 @@ void main (int argc, char *argv[])
     if (mbox_send(C2_mbox, 0, (void*)&sending) == MBOX_FAIL)
       Printf("Failed to send a message in react2. PID %d\n", getpid());
   }
-  Printf("react2 exiting\n"); 
+
+  Printf("4 CO -> 2 O2 + 2 C2 reacted, PID: %d\n", getpid());
+
   Exit();
 }

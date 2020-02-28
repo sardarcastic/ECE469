@@ -121,7 +121,7 @@ void ProcessFreeResources (PCB *pcb) {
   // Your code for closing any open mailbox connections
   // that a dying process might have goes here.
   //-----------------------------------------------------
-  if ( MboxCloseAllByPid(pcbs - pcb) == MBOX_FAIL){
+  if ( MboxCloseAllByPid(pcb - pcbs) == MBOX_FAIL){
     printf("FATAL ERROR: could not close mailboxes in ProcessFreeResources!\n");
     exitsim();
   }

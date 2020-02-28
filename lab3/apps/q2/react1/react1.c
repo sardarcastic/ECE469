@@ -37,5 +37,7 @@ void main (int argc, char *argv[])
   if (mbox_send(S_mbox, 0, (void*)&sending) == MBOX_FAIL)
     Printf("Failed to send message 2 in react1. PID %d\n", getpid());
   
+  Printf("S2 -> S + S reacted, PID: %d\n", getpid());
+
   Exit();
 }

@@ -31,10 +31,10 @@ void main (int argc, char *argv[])
     So4_mbox_str [10];
 
   //Expected number of left over molecules
-//  int leftover_S;
-//  int leftover_Co;
-//  int leftover_o2;
-//  int leftover_C2;
+  int leftover_S;
+  int leftover_Co;
+  int leftover_o2;
+  int leftover_C2;
   int expected_So4;
 
   char* receiving;
@@ -48,19 +48,18 @@ void main (int argc, char *argv[])
   //Changing the inputs to integers
   num_s2 = dstrtol(argv[1], NULL, 10);
   num_co = dstrtol(argv[2], NULL, 10);
+  Printf("Creating %d S2s and %d COs\n", num_s2, num_co);
 
   //Calculating the number of reactions
   react1 = num_s2;
   react2 = num_co / 4;
   react3 = (2*react1 < react2) ? react1*2 : react2; 
 
-//  leftover_S = (2*react1)-react3;
-//  leftover_Co = num_co - (4*react2);
-//  leftover_o2 = react2 - react3;
-//  leftover_C2 = react2;
+  leftover_S = (2*react1)-react3;
+  leftover_Co = num_co - (4*react2);
+  leftover_o2 = react2 - react3;
+  leftover_C2 = react2;
   expected_So4 = react3;
-
-  Printf("makeprocs PID: %d\n", getpid()); 
 
   if ((S2_mbox = mbox_create()) == MBOX_FAIL){
     Printf("Failed to create mailbox for S2\n");
@@ -125,27 +124,22 @@ void main (int argc, char *argv[])
   //S2 generation
   for (i = 0; i < num_s2; i++){
     process_create(S2_TO_RUN, 0, 1, S2_mbox_str, NULL);
-    Printf("S2 generator %d created\n", i);
   }
   //Co generation
   for (i = 0; i < num_co; i++){
     process_create(Co_TO_RUN, 0, 1, Co_mbox_str,NULL);
-    Printf("Co generator %d created\n", i);
   }
   //react1
   for (i = 0; i < react1; i++){
     process_create(REACT1_TO_RUN, 0, 1, S2_mbox_str, S_mbox_str ,NULL);
-    Printf("reaction 1 %d created\n", i);
   }
   //react2
   for (i = 0; i < react2; i++){
     process_create(REACT2_TO_RUN, 0, 1, Co_mbox_str, o2_mbox_str, C2_mbox_str ,NULL);
-    Printf("reaction2 %d created\n", i);
   }
   //react3
   for (i = 0; i < react3; i++){
     process_create(REACT3_TO_RUN, 0, 1, S_mbox_str, o2_mbox_str, So4_mbox_str ,NULL);
-    Printf("reaction 3 %d created\n", i);
   }
 
   //Recieving messages from So4 mailbox to know when to exit makeprocs
@@ -156,6 +150,10 @@ void main (int argc, char *argv[])
     }
   
   //TODO
-  Printf("<Print statement for printing leftover molecules and the number of So4 produced>\n");
-  Printf("All other processes completed, exiting main process.\n");
+  Printf("%d S2's leftover. ", 0);
+  Printf("%d S's leftover. ", leftover_S);
+  Printf("%d CO's leftover. ", leftover_Co);
+  Printf("%d O2's leftover. ", leftover_o2);
+  Printf("%d C2's leftover. ", leftover_C2);
+  Printf("%d SO4's created.\n", expected_So4); 
 }

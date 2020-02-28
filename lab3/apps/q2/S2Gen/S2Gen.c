@@ -24,5 +24,7 @@ void main (int argc, char *argv[])
     Printf("Failed to send a message in S2Gen. PID %d\n", getpid());
   }
 
+  Printf("S2 injected into Radeon atmosphere, PID: %d\n", getpid());
+
   Exit();
 }
