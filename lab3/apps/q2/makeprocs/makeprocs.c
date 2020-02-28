@@ -60,6 +60,8 @@ void main (int argc, char *argv[])
 //  leftover_C2 = react2;
   expected_So4 = react3;
 
+  Printf("makeprocs PID: %d\n", getpid()); 
+
   if ((S2_mbox = mbox_create()) == MBOX_FAIL){
     Printf("Failed to create mailbox for S2\n");
     Exit();

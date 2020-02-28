@@ -11,7 +11,8 @@ void main (int argc, char *argv[])
   mbox_t So4_mbox;
   char sending;
   char receiving;
-  if (argc != 2) { 
+  int flag;
+  if (argc != 4) { 
     Printf("Usage: "); Printf(argv[0]); Printf(" <handle_to_S_mbox> <handle_to_o2_mbox> <handle_to_So4_mbox> <\n"); 
     Exit();
   } 
@@ -21,15 +22,31 @@ void main (int argc, char *argv[])
   So4_mbox = dstrtol(argv[3], NULL, 10);
   sending = ' ';
 
+  if (mbox_open(S_mbox) == MBOX_FAIL) {
+    Printf("Failed to open mailbox in react3. PID %d\n", getpid());
+  }
+  
+  if (mbox_open(o2_mbox) == MBOX_FAIL) {
+    Printf("Failed to open mailbox in react3. PID %d\n", getpid());
+  }
+  
+  if (mbox_open(So4_mbox) == MBOX_FAIL) {
+    Printf("Failed to open mailbox in react3. PID %d\n", getpid());
+  }
+  
   //Receiving 3 messages
   if(mbox_recv(S_mbox, 0, (void*)&receiving) == MBOX_FAIL){
     Printf("Failed to receive a message in react3. PID %d\n", getpid());
     Exit();
   }
+  Printf("received S PID %d\n", getpid());
   for (i = 0; i<2; i++){
-    if(mbox_recv(o2_mbox, 0, (void*)&receiving) == MBOX_FAIL){
-      Printf("Failed to receive a message in react3. PID %d\n", getpid());
-      Exit();
+    Printf("mboxrecv o2 react3\n");
+    flag = mbox_recv(o2_mbox, 0, (void*)&receiving);
+    Printf("react3 02 flag %d\n", flag);
+    if(flag == MBOX_FAIL){
+      Printf("Failed to receive a O2 message in react3. PID %d\n", getpid());
+      //Exit();
     }
   }
   //Sending 1 message to So4 mbox 

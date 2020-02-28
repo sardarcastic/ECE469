@@ -16,8 +16,14 @@ void main (int argc, char *argv[])
   Co_mbox = dstrtol(argv[1], NULL, 10);
   sending = ' ';
   
-  if (mbox_send(Co_mbox, 0, (void*)sending) == MBOX_FAIL)
-    Printf("Failed to send a message in CoGen. PID %d\n", getpid());
+  if (mbox_open(Co_mbox) == MBOX_FAIL) {
+    Printf("Failed to open mailbox in CoGen. PID %d\n", getpid());
+  }
 
+  if (mbox_send(Co_mbox, 0, (void*)sending) == MBOX_FAIL) {
+    Printf("Failed to send a message in CoGen. PID %d\n", getpid());
+  }
+
+  Printf("Cogen PID: %d\n", getpid());
   Exit();
 }

@@ -184,6 +184,7 @@ int MboxSend(mbox_t handle, int length, void* message) {
 
   while (AQueueLength(&mboxes[handle].msg_queue) >= MBOX_MAX_BUFFERS_PER_MBOX || i == MBOX_NUM_BUFFERS) {
     CondHandleWait(mboxes[handle].not_full);
+    printf("stuck PID: %d\n", mypid);
 
     intrval = DisableIntrs();
     for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
@@ -240,23 +241,27 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
   mbox_message * msg;
 
   if (LockHandleAcquire(mboxes[handle].lock) != SYNC_SUCCESS) {
+    printf("fail1\n");
     return MBOX_FAIL;
   }
 
   if (mboxes[handle].procs[mypid] != 1) {
     LockHandleRelease(mboxes[handle].lock);
-    return MBOX_FAIL;
+    printf("fail2\n");
+    return -2;
   }
 
-  while (AQueueEmpty(&mboxes[handle].msg_queue) == 0) {
+  while (AQueueEmpty(&mboxes[handle].msg_queue) == 1) {
     CondHandleWait(mboxes[handle].not_empty);
   }
 
   msg_link = AQueueFirst(&mboxes[handle].msg_queue);
   msg = (mbox_message *) AQueueObject(msg_link);
+  printf("msglength %d\n", msg->length);
   if (msg->length > maxlength) {
     LockHandleRelease(mboxes[handle].lock);
-    return MBOX_FAIL;
+    printf("fail3\n");
+    return -3;
   }
   bcopy(msg->buffer, message, msg->length);
   
@@ -268,7 +273,7 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
   CondHandleSignal(mboxes[handle].not_full);
   LockHandleRelease(mboxes[handle].lock);
 
-  return MBOX_FAIL;
+  return msg->length;
 }
 
 //--------------------------------------------------------------------------------
@@ -290,8 +295,9 @@ int MboxCloseAllByPid(int pid) {
   for (i = 0; i < MBOX_NUM_MBOXES; i++) {
     if (mboxes[i].inuse == 1) {
       
-      if (LockHandleAcquire(mboxes[i].lock) != SYNC_SUCCESS) 
+      if (LockHandleAcquire(mboxes[i].lock) != SYNC_SUCCESS) {
 	return MBOX_FAIL;
+      }
       box_in_use = 0;
 
       mboxes[i].procs[pid] = 0;
@@ -302,8 +308,11 @@ int MboxCloseAllByPid(int pid) {
 	}
       }
       
-      if (box_in_use == 0)
+      if (box_in_use == 0) {
 	mboxes[i].inuse = 0;
+        printf("Closing mailbox\n");
+      } 
+      LockHandleRelease(mboxes[i].lock);
     }
   }
   

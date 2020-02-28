@@ -15,9 +15,14 @@ void main (int argc, char *argv[])
 
   S2_mbox = dstrtol(argv[1], NULL, 10);
   sending = ' ';
+
+  if (mbox_open(S2_mbox) == MBOX_FAIL) {
+    Printf("Failed to open mailbox in S2Gen. PID %d\n", getpid());
+  }
   
-  if (mbox_send(S2_mbox, 0, (void*)sending) == MBOX_FAIL)
+  if (mbox_send(S2_mbox, 0, (void*)sending) == MBOX_FAIL) {
     Printf("Failed to send a message in S2Gen. PID %d\n", getpid());
+  }
 
   Exit();
 }
