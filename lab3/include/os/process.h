@@ -56,6 +56,13 @@ typedef struct PCB {
 
   int		runtime;	// total time on cpu (jiffies)
   int		switchedtime;	// time pcb was landed on cpu (used to calculate runtime) (jiffies)
+
+  int		priority;	// priority of this process
+  int		base_priority;	// base priority 
+  double 	estcpu;		// estimated time on cpu
+  int		num_quanta;
+
+  int		autowake;	// auto wake flag
 } PCB;
 
 // Offsets of various registers from the stack pointer in the register
@@ -102,6 +109,7 @@ int GetPidFromAddress(PCB *pcb);
 void ProcessUserSleep(int seconds);
 void ProcessYield();
 
+void ProcessIdle();
 void ProcessRecalcPriority(PCB *pcb);
 int  ProcessInsertRunning(PCB *pcb);
 void ProcessDecayEstcpu(PCB *pcb);
