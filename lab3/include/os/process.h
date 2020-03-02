@@ -18,6 +18,14 @@
 
 #define	PROCESS_MAX_PROCS	32	// Maximum number of active processes
 
+// lab3 inserted
+#define BASE_PRIORITY		50
+#define MAX_PRIORITY		127
+#define PRIORITIES_PER_QUEUE	4
+#define NUM_PRIORITY_QUEUES	32
+#define NUM_JIFFIES_DECAY	100
+// /////////////
+
 #define	PROCESS_INIT_ISR_SYS	0x140	// Initial status reg value for system processes
 #define	PROCESS_INIT_ISR_USER	0x100	// Initial status reg value for user processes
 
@@ -45,6 +53,9 @@ typedef struct PCB {
 
   int           pinfo;          // Turns on printing of runtime stats
   int           pnice;          // Used in priority calculation
+
+  int		runtime;	// total time on cpu (jiffies)
+  int		switchedtime;	// time pcb was landed on cpu (used to calculate runtime) (jiffies)
 } PCB;
 
 // Offsets of various registers from the stack pointer in the register
@@ -90,5 +101,16 @@ int GetPidFromAddress(PCB *pcb);
 
 void ProcessUserSleep(int seconds);
 void ProcessYield();
+
+void ProcessRecalcPriority(PCB *pcb);
+int  ProcessInsertRunning(PCB *pcb);
+void ProcessDecayEstcpu(PCB *pcb);
+void ProcessDecayEstcpuSleep(PCB *pcb, int time_asleep_jiffies);
+PCB* ProcessFindHighestPriorityPCB();
+void ProcessDecayAllEstcpus();
+void ProcessFixRunQueues();
+int  ProcessCountAutowake();
+int  ProcessPrintRunQueues();
+inline int WhichQueue(PCB *pcb);
 
 #endif	/* __process_h__ */

@@ -27,7 +27,7 @@ static Queue	freepcbs;
 
 // List of processes that are ready to run (ie, not waiting for something
 // to happen).
-static Queue	runQueue;
+static Queue	runQueue[NUM_PRIORITY_QUEUES];
 
 // List of processes that are waiting for something to happen.  There's no
 // reason why this must be a single list; there could be many lists for many
@@ -66,6 +66,7 @@ void ProcessModuleInit () {
 
   dbprintf ('p', "ProcessModuleInit: function started\n");
   AQueueInit (&freepcbs);
+//  for (i = 0; i < NUM_PRIORITY_QUEUES
   AQueueInit(&runQueue);
   AQueueInit (&waitQueue);
   AQueueInit (&zombieQueue);
@@ -203,6 +204,15 @@ void ProcessSchedule () {
 
   dbprintf ('p', "Now entering ProcessSchedule (cur=0x%x, %d ready)\n",
 	    (int)currentPCB, AQueueLength (&runQueue));
+
+  // update current PCB runtime and print if pinfo
+  if (currentPCB->switchedtime != 0) {
+    currentPCB->runtime = ClkGetCurJiffies() - currentPCB->switchedtime; 
+  }
+  if (currentPCB->pinfo == 1) {
+    printf(PROCESS_CPUSTATS_FORMAT, GetPidFromAddress(currentPCB), currentPCB->runtime, 0);
+  }
+
   // The OS exits if there's no runnable process.  This is a feature, not a
   // bug.  An easy solution to allowing no runnable "user" processes is to
   // have an "idle" process that's simply an infinite loop.
@@ -229,6 +239,9 @@ void ProcessSchedule () {
   currentPCB = pcb;
   dbprintf ('p',"About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
 	    (int)pcb, pcb->flags, (int)(pcb->sysStackPtr[PROCESS_STACK_IAR]));
+
+  //saved time switched in
+  currentPCB->switchedtime = ClkGetCurJiffies();
 
   // Clean up zombie processes here.  This is done at interrupt time
   // because it can't be done while the process might still be running
@@ -550,6 +563,11 @@ int ProcessFork (VoidFunc func, uint32 param, int pnice, int pinfo,char *name, i
     // Mark this as a system process.
     pcb->flags |= PROCESS_TYPE_SYSTEM;
   }
+
+  // initialize added pcb struct attributes
+  pcb->pinfo = pinfo;
+  pcb->runtime = 0;
+  pcb->switchedtime = 0;
 
   // Place PCB onto run queue
   intrs = DisableIntrs ();
@@ -974,4 +992,31 @@ void ProcessUserSleep(int seconds) {
 //-----------------------------------------------------
 void ProcessYield() {
   // Your code here
+}
+
+void ProcessRecalcPriority(PCB *pcb) {
+}
+
+int  ProcessInsertRunning(PCB *pcb) {
+}
+
+void ProcessDecayEstcpu(PCB *pcb) {
+}
+
+void ProcessDecayEstcpuSleep(PCB *pcb, int time_asleep_jiffies) {
+}
+
+PCB* ProcessFindHighestPriorityPCB() {
+}
+
+void ProcessDecayAllEstcpus() {
+}
+
+void ProcessFixRunQueues() {
+}
+
+int  ProcessCountAutowake() {
+}
+
+int  ProcessPrintRunQueues() {
 }
