@@ -207,11 +207,11 @@ void ProcessSetResult (PCB * pcb, uint32 result) {
 //----------------------------------------------------------------------
 void ProcessSchedule () {
   PCB *pcb=NULL;
-  int i=0;
-  Link *l=NULL;
+  //int i=0;
+  //Link *l=NULL;
 
   dbprintf ('p', "Now entering ProcessSchedule (cur=0x%x, %d ready)\n",
-	    (int)currentPCB, AQueueLength (&runQueue));
+	    (int)currentPCB, AQueueLength (&runQueue[WhichQueue(currentPCB)]));
 
   // update current PCB runtime and print if pinfo
   if (currentPCB->switchedtime != 0) {
@@ -626,7 +626,7 @@ int ProcessFork (VoidFunc func, uint32 param, int pnice, int pinfo,char *name, i
   pcb->priority = 0;
   pcb->base_priority = BASE_PRIORITY;
   pcb->estcpu = 0;
-  pcb->num_quant = 0;
+  pcb->num_quanta = 0;
 
   pcb->autowake = 0;
   pcb->sleeptime = 0;
@@ -982,7 +982,7 @@ void main (int argc, char *argv[])
   }
 
   // Create Idle Process
-  ProcessFork(ProcessIdle, &idleargs, 0, 0, "Idle", 1);
+  ProcessFork(ProcessIdle, (uint32) &idleargs, 0, 0, "Idle", 1);
 
   // Start the clock which will in turn trigger periodic ProcessSchedule's
   ClkStart();
@@ -1186,6 +1186,7 @@ int  ProcessCountAutowake() {
 }
 
 int  ProcessPrintRunQueues() {
+  return 1;
 }
 
 inline int WhichQueue(PCB *pcb) {
@@ -1193,7 +1194,6 @@ inline int WhichQueue(PCB *pcb) {
 }
 
 void WakeupSleepingProcesses() { 
-  int count = 0;
   Link *l;
   PCB *pcb;
   int currTime = ClkGetCurJiffies();
