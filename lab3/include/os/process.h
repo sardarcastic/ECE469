@@ -63,6 +63,10 @@ typedef struct PCB {
   int		num_quanta;
 
   int		autowake;	// auto wake flag
+  int		sleeptime;	// time it went to sleep
+  int		wakeuptime;	// time to wake up
+
+  int		yieldflag;
 } PCB;
 
 // Offsets of various registers from the stack pointer in the register
@@ -119,6 +123,7 @@ void ProcessDecayAllEstcpus();
 void ProcessFixRunQueues();
 int  ProcessCountAutowake();
 int  ProcessPrintRunQueues();
+void WakeupSleepingProcesses();
 inline int WhichQueue(PCB *pcb);
 
 #endif	/* __process_h__ */
