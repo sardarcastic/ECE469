@@ -18,8 +18,10 @@ void main (int argc, char *argv[])
   program_index = dstrtol(argv[1], NULL, 10);
   s_procs_completed = dstrtol(argv[2], NULL, 10);
 
+  //if (program_index == 0) sleep(30);
   // Now print messages to see if priority scheduling is working
   for(i=0; i<30; i++) {
+    //if (program_index == 0 && i % 2 == 0) yield();
     Printf("spawn_me (%d): %c%d\n", getpid(), 'A'+program_index, i);
     for(j=0; j<50000; j++);  // just busy-wait awhile
   }

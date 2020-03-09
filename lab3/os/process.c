@@ -218,7 +218,7 @@ void ProcessSchedule () {
     currentPCB->runtime = ClkGetCurJiffies() - currentPCB->switchedtime; 
   }
   if (currentPCB->pinfo == 1) {
-    printf(PROCESS_CPUSTATS_FORMAT, GetPidFromAddress(currentPCB), currentPCB->runtime, 0);
+    printf(PROCESS_CPUSTATS_FORMAT, GetPidFromAddress(currentPCB), currentPCB->runtime, currentPCB->priority);
   }
 
   // The OS exits if there's no runnable process.  This is a feature, not a
@@ -246,10 +246,11 @@ void ProcessSchedule () {
       exitsim();
     }
   }
+  if (pcb == NULL) printf("highest pcb is null\n");
 
   // update estimated cpu time if process used entire window
   if (currentPCB->yieldflag == 0) { 
-    if (currentPCB->switchedtime - ClkGetCurJiffies() >= PROCESS_QUANTUM_JIFFIES) {
+    if (ClkGetCurJiffies() - currentPCB->switchedtime >= PROCESS_QUANTUM_JIFFIES) {
       currentPCB->estcpu++;
       currentPCB->num_quanta++;
       ProcessRecalcPriority(currentPCB);
@@ -258,14 +259,17 @@ void ProcessSchedule () {
   else {
     currentPCB->yieldflag = 0;
   }
+//  printf("PID: %d quanta: %d diff: %d", GetPidFromAddress(currentPCB), currentPCB->num_quanta, ClkGetCurJiffies() - currentPCB->switchedtime);
   
-  if (AQueueRemove(&currentPCB->l) == QUEUE_FAIL) {
-    printf("can't remove pcb from queue\n");
-    exitsim();
-  }
-  if (ProcessInsertRunning(currentPCB) == QUEUE_FAIL) {
-    printf("process insert running failed\n");
-    exitsim();
+  if (currentPCB->flags & PROCESS_STATUS_RUNNABLE) {
+    if (AQueueRemove(&currentPCB->l) == QUEUE_FAIL) {
+      printf("can't remove pcb from queue\n");
+      exitsim();
+    }
+    if (ProcessInsertRunning(currentPCB) == QUEUE_FAIL) {
+      printf("process insert running failed\n");
+      exitsim();
+    }
   }
 
   if (ClkGetCurJiffies() > nextEstcpuDecay) {
@@ -290,6 +294,10 @@ void ProcessSchedule () {
     pcb = ProcessFindHighestPriorityPCB();
   }
   
+  //printf("idle process PID %d, current PID %d\n", GetPidFromAddress(idlePCB), GetPidFromAddress(currentPCB));
+  //printf("in scheduler\n");
+  //ProcessPrintRunQueues();
+  //ProcessPrintWaitQueues();
   currentPCB = pcb;
   dbprintf ('p',"About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
 	    (int)pcb, pcb->flags, (int)(pcb->sysStackPtr[PROCESS_STACK_IAR]));
@@ -341,6 +349,9 @@ void ProcessSuspend (PCB *suspend) {
     exitsim();
   }
   dbprintf ('p', "ProcessSuspend (%d): function complete\n", GetCurrentPid());
+
+  //printf("suspending %d\n", GetPidFromAddress(suspend));
+  //ProcessPrintRunQueues();
 }
 
 //----------------------------------------------------------------------
@@ -982,7 +993,7 @@ void main (int argc, char *argv[])
   }
 
   // Create Idle Process
-  ProcessFork(ProcessIdle, (uint32) &idleargs, 0, 0, "Idle", 1);
+  ProcessFork(ProcessIdle, (uint32) &idleargs, 0, 0, "Idle", 0);
 
   // Start the clock which will in turn trigger periodic ProcessSchedule's
   ClkStart();
@@ -1063,7 +1074,7 @@ void ProcessUserSleep(int seconds) {
   // Your code here
   currentPCB->autowake = 1;
   currentPCB->sleeptime = ClkGetCurJiffies();
-  currentPCB->wakeuptime = currentPCB->sleeptime + seconds * 1000000;
+  currentPCB->wakeuptime = currentPCB->sleeptime + seconds * 1000;
   ProcessSuspend(currentPCB);
 }
 
@@ -1077,7 +1088,9 @@ void ProcessYield() {
 }
 
 void ProcessIdle() {
-  while(1);
+  while(1) {
+    //printf("idle\n");
+  }
 }
 
 ///////////OPTIONAL////////////////
@@ -1186,6 +1199,35 @@ int  ProcessCountAutowake() {
 }
 
 int  ProcessPrintRunQueues() {
+  int i;
+  Link *l;
+  PCB *pcb;
+  for (i = 0; i < NUM_PRIORITY_QUEUES; i++) { 
+    printf("%d: ", i);
+    l = AQueueFirst(&runQueue[i]);
+    while (l != NULL) {
+      pcb = (PCB *) AQueueObject(l);
+      printf("%d, ", GetPidFromAddress(pcb));
+      l = AQueueNext(l);
+    }
+    printf("\n");
+  }
+  return 1;
+}
+
+int ProcessPrintWaitQueues() {
+  Link *l;
+  PCB *pcb;
+  printf("wait: ");
+  l = AQueueFirst(&waitQueue);
+  while (l != NULL) {
+    pcb = (PCB *) AQueueObject(l);
+    printf("%d", GetPidFromAddress(pcb));
+    if (pcb->autowake == 1) printf("*");
+    printf(", ");
+    l = AQueueNext(l);
+  }
+  printf("\n");
   return 1;
 }
 
@@ -1200,7 +1242,9 @@ void WakeupSleepingProcesses() {
   l = AQueueFirst(&waitQueue);
   while (l != NULL) {
     pcb = (PCB *) AQueueObject(l);
-    if (pcb->autowake == 1 && pcb->wakeuptime >= currTime) {
+    //printf("PID: %d time: %d %d\n", GetPidFromAddress(pcb), currTime, pcb->wakeuptime);
+    if (pcb->autowake == 1 && pcb->wakeuptime <= currTime) {
+      //printf("wakeup\n");
       ProcessWakeup(pcb); 
     }
     l = AQueueNext(l);

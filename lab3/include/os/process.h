@@ -123,6 +123,7 @@ void ProcessDecayAllEstcpus();
 void ProcessFixRunQueues();
 int  ProcessCountAutowake();
 int  ProcessPrintRunQueues();
+int ProcessPrintWaitQueues();
 void WakeupSleepingProcesses();
 inline int WhichQueue(PCB *pcb);
 
