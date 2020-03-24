@@ -215,7 +215,7 @@ void ProcessSchedule () {
 
   // update current PCB runtime and print if pinfo
   if (currentPCB->switchedtime != 0) {
-    currentPCB->runtime = ClkGetCurJiffies() - currentPCB->switchedtime; 
+    currentPCB->runtime += ClkGetCurJiffies() - currentPCB->switchedtime; 
   }
   if (currentPCB->pinfo == 1) {
     printf(PROCESS_CPUSTATS_FORMAT, GetPidFromAddress(currentPCB), currentPCB->runtime, currentPCB->priority);
@@ -298,7 +298,7 @@ void ProcessSchedule () {
   
   //printf("idle process PID %d, current PID %d\n", GetPidFromAddress(idlePCB), GetPidFromAddress(currentPCB));
   //printf("in scheduler\n");
-  ProcessPrintRunQueues();
+  //ProcessPrintRunQueues();
   //ProcessPrintWaitQueues();
   currentPCB = pcb;
   dbprintf ('p',"About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
@@ -1098,7 +1098,7 @@ void ProcessIdle() {
 ///////////OPTIONAL////////////////
 void ProcessRecalcPriority(PCB *pcb) {
   pcb->priority = pcb->base_priority + (pcb->estcpu / 4) + (2 * pcb->pnice);
-  if (pcb->priority > 127) pcb->priority = 127;
+  if (pcb->priority > MAX_PRIORITY) pcb->priority = MAX_PRIORITY;
   if (pcb->priority < pcb->base_priority) pcb->priority = pcb->base_priority;
 }
 
@@ -1113,7 +1113,7 @@ int  ProcessInsertRunning(PCB *pcb) {
 }
 
 void ProcessDecayEstcpu(PCB *pcb) {
-  pcb->estcpu = pcb->estcpu * (2.0/3) + pcb->pnice;
+  pcb->estcpu = pcb->estcpu * 2.0 / 3.0 + pcb->pnice;
 }
 
 void ProcessDecayEstcpuSleep(PCB *pcb, int time_asleep_jiffies) {
@@ -1209,7 +1209,8 @@ int  ProcessPrintRunQueues() {
     l = AQueueFirst(&runQueue[i]);
     while (l != NULL) {
       pcb = (PCB *) AQueueObject(l);
-      printf("%d, ", GetPidFromAddress(pcb));
+      printf("%d- ", GetPidFromAddress(pcb));
+      printf("%f, ", pcb->estcpu);
       l = AQueueNext(l);
     }
     printf("\n");
