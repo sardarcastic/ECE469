@@ -286,7 +286,7 @@ void ProcessSchedule () {
   }
   
   //printf("idle process PID %d, current PID %d\n", GetPidFromAddress(idlePCB), GetPidFromAddress(currentPCB));
-  //printf("in scheduler\n");
+  //printf("BEFORE fixing:\n");
   //ProcessPrintRunQueues();
   //ProcessPrintWaitQueues();
   currentPCB = pcb;
@@ -307,7 +307,8 @@ void ProcessSchedule () {
       exitsim();
     }
   } 
-  
+    //printf("AFTER fixing: \n");
+    //ProcessPrintRunQueues();  
   // Clean up zombie processes here.  This is done at interrupt time
   // because it can't be done while the process might still be running
   while (!AQueueEmpty(&zombieQueue)) {
