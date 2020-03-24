@@ -273,6 +273,8 @@ void ProcessSchedule () {
   }
 
   if (ClkGetCurJiffies() > nextEstcpuDecay) {
+    //printf("before decay: \n");
+    //ProcessPrintRunQueues();
     ProcessDecayAllEstcpus();
     ProcessFixRunQueues();
     nextEstcpuDecay = ClkGetCurJiffies() + NUM_JIFFIES_DECAY;
@@ -296,7 +298,7 @@ void ProcessSchedule () {
   
   //printf("idle process PID %d, current PID %d\n", GetPidFromAddress(idlePCB), GetPidFromAddress(currentPCB));
   //printf("in scheduler\n");
-  //ProcessPrintRunQueues();
+  ProcessPrintRunQueues();
   //ProcessPrintWaitQueues();
   currentPCB = pcb;
   dbprintf ('p',"About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
@@ -1167,7 +1169,7 @@ void ProcessFixRunQueues() {
       l = AQueueFirst(&runQueue[i]);
       while (l != NULL) {
         pcb = (PCB*) AQueueObject(l);
-	if (pcb->priority != WhichQueue(pcb)) {
+	if (i != WhichQueue(pcb)) {
           if (AQueueRemove(&pcb->l) == QUEUE_FAIL) {
             printf("can't remove pcb from queue\n");
             exitsim();
