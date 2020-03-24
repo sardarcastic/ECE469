@@ -23,8 +23,8 @@ void main (int argc, char *argv[])
   if (mbox_send(S2_mbox, 0, (void*)sending) == MBOX_FAIL) {
     Printf("Failed to send a message in S2Gen. PID %d\n", getpid());
   }
-
+  
   Printf("S2 injected into Radeon atmosphere, PID: %d\n", getpid());
-
+  
   Exit();
 }
