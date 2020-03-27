@@ -9,10 +9,11 @@
 #include "dlxos.h"
 #include "process.h"
 #include "memory.h"
+#include "memory_constants.h"
 #include "queue.h"
 
 // num_pages = size_of_memory / size_of_one_page
-static uint32 freemap[/*size*/];
+static uint32 freemap[MEM_MAX_SIZE / MEM_PAGE_SIZE / 32];
 static uint32 pagestart;
 static int nfreepages;
 static int freemapmax;
@@ -54,8 +55,28 @@ int MemoryGetSize() {
 //      the ones in use by the operating system as "VALID", and mark
 //      all the rest as not in use.
 //
+//      0 bit in freemap array means page is in use - "VALID" ?
+//      1 bit means not in use
+//
 //----------------------------------------------------------------------
 void MemoryModuleInit() {
+  int i;
+  int lastospage = lastosaddress / MEM_PAGE_SIZE; 
+  int lastsyspage = MemoryGetSize() / MEM_PAGE_SIZE;
+  if (lastosaddress % MEM_PAGE_SIZE != 0) lastospage++;
+  for (i = 0; i < lastospage / 32; i++) {
+    freemap[i] = 0;
+  }
+  if (lastospage % 32 != 0) freemap[i] = invert((1 << (lastospage % 32)) - 1);
+  
+  for (i++; i < lastsyspage / 32; i++) {
+    freemap[i] = 0xffffffff;
+  }
+  if (lastsyspage % 32 != 0) freemap[i] = (1 << (lastsyspage % 32)) - 1;
+
+  for (i++; i < MEM_FREEMAP_SIZE; i++) {
+    freemap[i] = 0;
+  }
 }
 
 
@@ -178,6 +199,19 @@ int MemoryPageFaultHandler(PCB *pcb) {
 //---------------------------------------------------------------------
 
 int MemoryAllocPage(void) {
+  int i;
+  int j;
+  int tmp;
+  for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
+    if (freemap[i] != 0) {
+      for (j = 0; j < 32; j++) {
+        if (freemap[i] & (1 << j) == (1 << j)) {
+	  return (i*32 + j) * MEM_PAGE_SIZE;
+	}
+      }
+    }
+  }
+  
   return -1;
 }
 
@@ -186,7 +220,9 @@ uint32 MemorySetupPte (uint32 page) {
   return -1;
 }
 
-
+// page is the physical page address we want to free
 void MemoryFreePage(uint32 page) {
+  int pagenumber = page / MEM_PAGE_SIZE;
+  freemap[pagenumber / 32] |= (1 << (pagenumber % 32));
 }
 
