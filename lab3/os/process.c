@@ -260,17 +260,6 @@ void ProcessSchedule () {
     currentPCB->yieldflag = 0;
   }
 //  printf("PID: %d quanta: %d diff: %d", GetPidFromAddress(currentPCB), currentPCB->num_quanta, ClkGetCurJiffies() - currentPCB->switchedtime);
-  
-  if (currentPCB->flags & PROCESS_STATUS_RUNNABLE) {
-    if (AQueueRemove(&currentPCB->l) == QUEUE_FAIL) {
-      printf("can't remove pcb from queue\n");
-      exitsim();
-    }
-    if (ProcessInsertRunning(currentPCB) == QUEUE_FAIL) {
-      printf("process insert running failed\n");
-      exitsim();
-    }
-  }
 
   if (ClkGetCurJiffies() > nextEstcpuDecay) {
     //printf("before decay: \n");
@@ -297,7 +286,7 @@ void ProcessSchedule () {
   }
   
   //printf("idle process PID %d, current PID %d\n", GetPidFromAddress(idlePCB), GetPidFromAddress(currentPCB));
-  //printf("in scheduler\n");
+  //printf("BEFORE fixing:\n");
   //ProcessPrintRunQueues();
   //ProcessPrintWaitQueues();
   currentPCB = pcb;
@@ -307,6 +296,19 @@ void ProcessSchedule () {
   //saved time switched in
   currentPCB->switchedtime = ClkGetCurJiffies();
 
+  //This is the change made (3/24/20)
+    if (currentPCB->flags & PROCESS_STATUS_RUNNABLE) {
+    if (AQueueRemove(&currentPCB->l) == QUEUE_FAIL) {
+      printf("can't remove pcb from queue\n");
+      exitsim();
+    }
+    if (ProcessInsertRunning(currentPCB) == QUEUE_FAIL) {
+      printf("process insert running failed\n");
+      exitsim();
+    }
+  } 
+    //printf("AFTER fixing: \n");
+    //ProcessPrintRunQueues();  
   // Clean up zombie processes here.  This is done at interrupt time
   // because it can't be done while the process might still be running
   while (!AQueueEmpty(&zombieQueue)) {
