@@ -14,9 +14,9 @@ void main (int argc, char *argv[])
   x = malloc(1000);
   q = malloc(1000);
   x = q + 0xfffff;
-  z = &x
+  z = &x;
 
-  Printf("process should have aborted (PID: %d) (should not have printed)\n", getpid())
+  Printf("process should have aborted (PID: %d) (should not have printed)\n", getpid());
 
   
 }
