@@ -13,7 +13,7 @@
 #include "queue.h"
 
 // num_pages = size_of_memory / size_of_one_page
-static uint32 freemap[MEM_MAX_SIZE / MEM_PAGE_SIZE / 32];
+static uint32 freemap[MEM_FREEMAP_SIZE];
 static uint32 pagestart;
 static int nfreepages;
 static int freemapmax;
@@ -61,21 +61,18 @@ int MemoryGetSize() {
 //----------------------------------------------------------------------
 void MemoryModuleInit() {
   int i;
-  int lastospage = lastosaddress / MEM_PAGE_SIZE; 
-  int lastsyspage = MemoryGetSize() / MEM_PAGE_SIZE;
-  if (lastosaddress % MEM_PAGE_SIZE != 0) lastospage++;
-  for (i = 0; i < lastospage / 32; i++) {
-    freemap[i] = 0;
-  }
-  if (lastospage % 32 != 0) freemap[i] = invert((1 << (lastospage % 32)) - 1);
-  
-  for (i++; i < lastsyspage / 32; i++) {
-    freemap[i] = 0xffffffff;
-  }
-  if (lastsyspage % 32 != 0) freemap[i] = (1 << (lastsyspage % 32)) - 1;
+  pagestart = lastosaddress / MEM_PAGE_SIZE;
+  freemapmax = MemoryGetSize() / MEM_PAGE_SIZE;
+  nfreepages = freemapmax - pagestart;
 
-  for (i++; i < MEM_FREEMAP_SIZE; i++) {
+  if (lastosaddress % MEM_PAGE_SIZE != 0) pagestart++;
+
+  for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
     freemap[i] = 0;
+  }
+
+  for (i = pagestart; i < freemapmax; i++) {
+    MemorySetFreemap(i);
   }
 }
 
@@ -89,6 +86,21 @@ void MemoryModuleInit() {
 //
 //----------------------------------------------------------------------
 uint32 MemoryTranslateUserToSystem (PCB *pcb, uint32 addr) {
+  uint32 pagenum = addr > MEM_L1FIELD_FIRST_BITNUM;
+  uint32 offset = addr & MEM_ADDRESS_OFFSET_MASK;
+
+  if (addr > MEM_MAX_VIRTUAL_ADDRESS) {
+    printf("PID: %d addr is larger than possible virtual address\n", GetPidFromAddress(pcb))
+    printf("  killing PID: %d\n", GetCurrentPid());
+    ProcessKill()
+  }
+
+  if (pcb->pagetable[pagenum] & MEM_PTE_VALID != MEM_PTE_VALID) {
+    pcb->currentSavedFrame[PROCESS_STACKFAULT] = addr;
+    MemoryPageFaultHandler(pcb);
+  }
+
+  return (pcb->pagetable[pagenum] & MEM_PTE_MASK) | offset;
 }
 
 
@@ -127,7 +139,7 @@ int MemoryMoveBetweenSpaces (PCB *pcb, unsigned char *system, unsigned char *use
     // Calculate the number of bytes to copy this time.  If we have more bytes
     // to copy than there are left in the current page, we'll have to just copy to the
     // end of the page and then go through the loop again with the next page.
-    // In other words, "bytesToCopy" is the minimum of the bytes left on this page 
+    // In other words, "bytesToCopy" is the minimum of the bytes left on this page
     // and the total number of bytes left to copy ("n").
 
     // First, compute number of bytes left in this page.  This is just
@@ -136,7 +148,7 @@ int MemoryMoveBetweenSpaces (PCB *pcb, unsigned char *system, unsigned char *use
     // MEM_ADDRESS_OFFSET_MASK should be the bit mask required to get just the
     // "offset" portion of an address.
     bytesToCopy = MEM_PAGESIZE - ((uint32)curUser & MEM_ADDRESS_OFFSET_MASK);
-    
+
     // Now find minimum of bytes in this page vs. total bytes left to copy
     if (bytesToCopy > n) {
       bytesToCopy = n;
@@ -175,21 +187,42 @@ int MemoryCopyUserToSystem (PCB *pcb, unsigned char *from,unsigned char *to, int
 }
 
 //---------------------------------------------------------------------
-// MemoryPageFaultHandler is called in traps.c whenever a page fault 
+// MemoryPageFaultHandler is called in traps.c whenever a page fault
 // (better known as a "seg fault" occurs.  If the address that was
-// being accessed is on the stack, we need to allocate a new page 
+// being accessed is on the stack, we need to allocate a new page
 // for the stack.  If it is not on the stack, then this is a legitimate
 // seg fault and we should kill the process.  Returns MEM_SUCCESS
 // on success, and kills the current process on failure.  Note that
-// fault_address is the beginning of the page of the virtual address that 
+// fault_address is the beginning of the page of the virtual address that
 // caused the page fault, i.e. it is the vaddr with the offset zero-ed
 // out.
 //
-// Note: The existing code is incomplete and only for reference. 
+// Note: The existing code is incomplete and only for reference.
 // Feel free to edit.
 //---------------------------------------------------------------------
 int MemoryPageFaultHandler(PCB *pcb) {
-  return MEM_FAIL;
+  uint32 npg;
+  uint32 fault_addr = pcb->currentSavedFrame[PROCESS_STACK_FAULT];
+  uint32 usr_stack_addr = pcb->currentSavedFrame[PROCESS_STACK_USER_STACKPOINTER];
+  uint32 fault_pagenum = fault_addr >> MEM_L1FIELD_FIRST_BITNUM;
+  uint32 stack_pagenum = usr_stack_addr >> MEM_L1FIELD_FIRST_BITNUM;
+
+  if (fault_pagenum < stack_pagenum) {
+    printf("PID: %d SEGFAULT\n", GetPidFromAddress(pcb))
+    printf("  killing PID: %d\n", GetCurrentPid());
+    ProcessKill();
+    return MEM_FAIL;
+  }
+  else {
+    if ((npg = MemoryAllocPage()) == 0) {
+      printf("MemoryPageFaultHandler: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
+      printf("  killing PID: %d\n", GetCurrentPid());
+      ProcessKill();
+      return MEM_FAIL;
+    }
+    pcb->pagetable[fault_pagenum] = MemorySetupPte(npg);
+    return MEM_SUCCESS;
+  }
 }
 
 
@@ -198,31 +231,49 @@ int MemoryPageFaultHandler(PCB *pcb) {
 // Feel free to edit/remove them
 //---------------------------------------------------------------------
 
+int MemoryAllocPageEasy(PCB *pcb) {
+  uint32 pagenum;
+  if ((pagenum = MemoryAllocPage()) == 0) {
+    printf("MemoryPageFaultHandler: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
+    printf("  killing PID: %d\n", GetCurrentPid());
+  }
+  return pagenum
+}
+
 int MemoryAllocPage(void) {
   int i;
   int j;
-  int tmp;
+  uint32 tmp;
+  if (nfreepages == 0) return 0;
+
   for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
     if (freemap[i] != 0) {
+      tmp = freemap[i];
       for (j = 0; j < 32; j++) {
-        if (freemap[i] & (1 << j) == (1 << j)) {
-	  return (i*32 + j) * MEM_PAGE_SIZE;
-	}
+        if (tmp & 0x1 == 1) {
+          nfreepages--;
+          return (i*32 + j);
+        }
+        tmp = tmp >> 1;
       }
     }
   }
-  
-  return -1;
+  return 0;
 }
 
+void MemorySetFreemap(uint32 page) {
+  freemap[page / 32] |= 1 << (page % 32);
+}
+
+void MemoryFreePage(uint32 page) {
+  MemorySetFreemap(page);
+  nfreepages++;
+}
+
+void MemoryFreePte(uint32 pte) {
+  MemoryFreePage((pte & MEM_PTE_MASK) / MEM_PAGE_SIZE);
+}
 
 uint32 MemorySetupPte (uint32 page) {
-  return -1;
+  return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
 }
-
-// page is the physical page address we want to free
-void MemoryFreePage(uint32 page) {
-  int pagenumber = page / MEM_PAGE_SIZE;
-  freemap[pagenumber / 32] |= (1 << (pagenumber % 32));
-}
-
