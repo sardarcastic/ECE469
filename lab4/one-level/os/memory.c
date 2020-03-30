@@ -90,13 +90,13 @@ uint32 MemoryTranslateUserToSystem (PCB *pcb, uint32 addr) {
   uint32 offset = addr & MEM_ADDRESS_OFFSET_MASK;
 
   if (addr > MEM_MAX_VIRTUAL_ADDRESS) {
-    printf("PID: %d addr is larger than possible virtual address\n", GetPidFromAddress(pcb))
+    printf("PID: %d addr is larger than possible virtual address\n", GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
-    ProcessKill()
+    ProcessKill();
   }
 
-  if (pcb->pagetable[pagenum] & MEM_PTE_VALID != MEM_PTE_VALID) {
-    pcb->currentSavedFrame[PROCESS_STACKFAULT] = addr;
+  if ((pcb->pagetable[pagenum] & MEM_PTE_VALID) != MEM_PTE_VALID) {
+    pcb->currentSavedFrame[PROCESS_STACK_FAULT] = addr;
     MemoryPageFaultHandler(pcb);
   }
 
@@ -208,7 +208,7 @@ int MemoryPageFaultHandler(PCB *pcb) {
   uint32 stack_pagenum = usr_stack_addr >> MEM_L1FIELD_FIRST_BITNUM;
 
   if (fault_pagenum < stack_pagenum) {
-    printf("PID: %d SEGFAULT\n", GetPidFromAddress(pcb))
+    printf("PID: %d SEGFAULT\n", GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
     ProcessKill();
     return MEM_FAIL;
@@ -237,7 +237,7 @@ int MemoryAllocPageEasy(PCB *pcb) {
     printf("MemoryPageFaultHandler: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
   }
-  return pagenum
+  return pagenum;
 }
 
 int MemoryAllocPage(void) {
@@ -250,7 +250,7 @@ int MemoryAllocPage(void) {
     if (freemap[i] != 0) {
       tmp = freemap[i];
       for (j = 0; j < 32; j++) {
-        if (tmp & 0x1 == 1) {
+        if ((tmp & 0x1) == 1) {
           nfreepages--;
           return (i*32 + j);
         }
@@ -276,4 +276,12 @@ void MemoryFreePte(uint32 pte) {
 
 uint32 MemorySetupPte (uint32 page) {
   return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
+}
+
+uint32 malloc(PCB* pcb, int memsize) {
+  return MEM_FAIL;
+}
+
+uint32 mfree(PCB* pcb, void* mem) {
+  return MEM_FAIL;
 }

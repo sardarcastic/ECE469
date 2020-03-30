@@ -29,4 +29,7 @@ void MemoryFreePage(uint32 page);
 uint32 MemorySetupPte (uint32 page);
 void MemoryFreePte (uint32 pte);
 
+uint32 malloc(PCB* pcb, int memsize);
+uint32 mfree(PCB* pcb, void* mem);
+
 #endif	// _memory_h_

@@ -87,7 +87,7 @@ void ProcessModuleInit () {
     //-------------------------------------------------------
     // STUDENT: Initialize the PCB's page table here.
     //-------------------------------------------------------
-    for (j = 0; j < MEM_PAGETABLE_SIZE; j++) {
+    for (j = 0; j < MEM_L1TABLE_SIZE; j++) {
       pcbs[i].pagetable[j] = 0;
     }
 
@@ -141,12 +141,12 @@ void ProcessFreeResources (PCB *pcb) {
   //------------------------------------------------------------
   // STUDENT: Free any memory resources on process death here.
   //------------------------------------------------------------
-  for (i = 0; i < MEM_PAGETABLE_SIZE; i++) {
-    if (pcb->pagetable[i] & MEM_PTE_VALID != MEM_PTE_VALID) return;
+  for (i = 0; i < MEM_L1TABLE_SIZE; i++) {
+    if ((pcb->pagetable[i] & MEM_PTE_VALID) != MEM_PTE_VALID) return;
     pcb->pagetable[i] = 0;
     MemoryFreePage(pcb->pagetable[i] >> MEM_L1FIELD_FIRST_BITNUM);
   }
-  MemoryFreePage(pcb->sysStackPtr >> MEM_L1FIELD_FIRST_BITNUM);
+  MemoryFreePage((uint32) pcb->sysStackPtr >> MEM_L1FIELD_FIRST_BITNUM);
 
   ProcessSetStatus (pcb, PROCESS_STATUS_FREE);
 }
@@ -428,16 +428,16 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   //---------------------------------------------------------
   // 4 pages for user code and global data
   for (i = 0; i < 4; i++) {
-    pagenum_alloc = MemoryAllocPageEasy();
+    pagenum_alloc = MemoryAllocPageEasy(pcb);
     pcb->pagetable[i] = MemorySetupPte(pagenum_alloc);
   }
   // user stack
-  pagenum_alloc = MemoryAllocPageEasy();
+  pagenum_alloc = MemoryAllocPageEasy(pcb);
   pcb->pagetable[MEM_L1TABLE_SIZE - 1] = MemorySetupPte(pagenum_alloc);
 
   // system stack
-  pagenum_alloc = MemoryAllocPageEasy();
-  stackframe = (pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 5);
+  pagenum_alloc = MemoryAllocPageEasy(pcb);
+  stackframe = (uint32*) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
 
   // Now that the stack frame points at the bottom of the system stack memory area, we need to
   // move it up (decrement it) by one stack frame size because we're about to fill in the
@@ -467,7 +467,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // STUDENT: setup the PTBASE, PTBITS, and PTSIZE here on the current
   // stack frame.
   //----------------------------------------------------------------------
-  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = pcb->pagetable;
+  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = (uint32) pcb->pagetable;
   pcb->currentSavedFrame[PROCESS_STACK_PTSIZE] = MEM_L1TABLE_SIZE;
   pcb->currentSavedFrame[PROCESS_STACK_PTBITS] = (MEM_L1FIELD_FIRST_BITNUM << 16) | MEM_L1FIELD_FIRST_BITNUM;
 
