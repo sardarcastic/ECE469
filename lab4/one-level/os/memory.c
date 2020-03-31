@@ -86,7 +86,7 @@ void MemoryModuleInit() {
 //
 //----------------------------------------------------------------------
 uint32 MemoryTranslateUserToSystem (PCB *pcb, uint32 addr) {
-  uint32 pagenum = addr > MEM_L1FIELD_FIRST_BITNUM;
+  uint32 pagenum = addr >> MEM_L1FIELD_FIRST_BITNUM;
   uint32 offset = addr & MEM_ADDRESS_OFFSET_MASK;
 
   if (addr > MEM_MAX_VIRTUAL_ADDRESS) {
@@ -100,6 +100,7 @@ uint32 MemoryTranslateUserToSystem (PCB *pcb, uint32 addr) {
     MemoryPageFaultHandler(pcb);
   }
 
+  //printf("MemoryTranslate: %x\n", (pcb->pagetable[pagenum] & MEM_PTE_MASK) | offset);
   return (pcb->pagetable[pagenum] & MEM_PTE_MASK) | offset;
 }
 
@@ -214,13 +215,9 @@ int MemoryPageFaultHandler(PCB *pcb) {
     return MEM_FAIL;
   }
   else {
-    if ((npg = MemoryAllocPage()) == 0) {
-      printf("MemoryPageFaultHandler: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
-      printf("  killing PID: %d\n", GetCurrentPid());
-      ProcessKill();
-      return MEM_FAIL;
-    }
+    npg = MemoryAllocPageEasy(pcb);
     pcb->pagetable[fault_pagenum] = MemorySetupPte(npg);
+    pcb->npages++;
     return MEM_SUCCESS;
   }
 }
@@ -252,6 +249,7 @@ int MemoryAllocPage(void) {
       for (j = 0; j < 32; j++) {
         if ((tmp & 0x1) == 1) {
           nfreepages--;
+	  freemap[i] &= invert(0x1 << j);
           return (i*32 + j);
         }
         tmp = tmp >> 1;
@@ -271,10 +269,11 @@ void MemoryFreePage(uint32 page) {
 }
 
 void MemoryFreePte(uint32 pte) {
-  MemoryFreePage((pte & MEM_PTE_MASK) / MEM_PAGE_SIZE);
+  MemoryFreePage((pte & MEM_PTE_MASK) >> MEM_L1FIELD_FIRST_BITNUM);
 }
 
 uint32 MemorySetupPte (uint32 page) {
+  //printf("MemorySetupPte: %x\n", (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID);
   return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
 }
 

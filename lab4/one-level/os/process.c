@@ -439,6 +439,8 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   pagenum_alloc = MemoryAllocPageEasy(pcb);
   stackframe = (uint32*) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
 
+  pcb->npages = 6;
+
   // Now that the stack frame points at the bottom of the system stack memory area, we need to
   // move it up (decrement it) by one stack frame size because we're about to fill in the
   // initial stack frame that will be loaded for this PCB when it gets switched in by
@@ -452,8 +454,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
 
   //----------------------------------------------------------------------
   // This section sets up the stack frame for the process.  This is done
-  // so that the frame looks to the interrupt handler like the process
-  // was "suspended" right before it began execution.  The standard
+  // so that the frame looks to the interrupt handler like the process // was "suspended" right before it began execution.  The standard
   // mechanism of swapping in the registers and returning to the place
   // where it was "interrupted" will then work.
   //----------------------------------------------------------------------
@@ -467,7 +468,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // STUDENT: setup the PTBASE, PTBITS, and PTSIZE here on the current
   // stack frame.
   //----------------------------------------------------------------------
-  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = (uint32) pcb->pagetable;
+  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = (uint32*) pcb->pagetable;
   pcb->currentSavedFrame[PROCESS_STACK_PTSIZE] = MEM_L1TABLE_SIZE;
   pcb->currentSavedFrame[PROCESS_STACK_PTBITS] = (MEM_L1FIELD_FIRST_BITNUM << 16) | MEM_L1FIELD_FIRST_BITNUM;
 
