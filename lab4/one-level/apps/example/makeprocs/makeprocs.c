@@ -30,27 +30,30 @@ void main (int argc, char *argv[])
 
 
   Printf("-------------------------------------------------------------------------------------\n");
-  Printf("makeprocs (%d): starting\n", getpid());
+  Printf("makeprocs (%d): starting\n\n", getpid());
 
   // Running a single hello world program
-  process_create(HELLO_WORLD, NULL);
+  // process_create(HELLO_WORLD, NULL);
 
-  // Accessing memory beyond the maximum virtual address
-  process_create(OUT_OF_BOUND_VM_ACC, NULL);
+  // Accessing memory beyond the maximum virtual address 
+   process_create(OUT_OF_BOUND_VM_ACC, NULL);
   
   // Accessing memory inside the virtual address space, but outside of currently allocated pages
-  process_create(INVALID_MEM_ACCESS, NULL);
+  // process_create(INVALID_MEM_ACCESS, NULL);
 
   // Causing the user function call stack to grow larger than 1 page.
   // ***
 
   // Calling hellow world 100 times
+  /*
   for (i = 0; i < 100; i++)
     process_create(HELLO_WORLD, NULL);
-  // Spawning 30 simultaneous processes (need semaphore in this one
+  */
+  // Spawning 30 simultaneous processes (need semaphore in this one)
+  /*
   for (i = 0; i < 30; i++)
     process_create(SIM_PROCS, s_procs_completed_str, NULL);
-
+  */
   
   if (sem_wait(s_procs_completed) != SYNC_SUCCESS) {
     Printf("Bad semaphore s_procs_completed (%d) in %s\n", s_procs_completed, argv[0]);
