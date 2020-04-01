@@ -30,6 +30,7 @@
 #define MEM_L1TABLE_SIZE		((MEM_MAX_VIRTUAL_ADDRESS + 4) >> MEM_L1FIELD_FIRST_BITNUM)
 #define MEM_ADDRESS_OFFSET_MASK		(MEM_PAGE_SIZE - 1)
 #define MEM_PTE_MASK			invert(MEM_PTE_READONLY | MEM_PTE_DIRTY | MEM_PTE_VALID)
+#define MEM_MAX_32_PAGE			((0xffffffff >> MEM_L1FIELD_FIRST_BITNUM) + 1)
 
 //--------------------------------------------------------
 

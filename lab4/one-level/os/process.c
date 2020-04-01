@@ -142,9 +142,10 @@ void ProcessFreeResources (PCB *pcb) {
   // STUDENT: Free any memory resources on process death here.
   //------------------------------------------------------------
   for (i = 0; i < MEM_L1TABLE_SIZE; i++) {
-    if ((pcb->pagetable[i] & MEM_PTE_VALID) != MEM_PTE_VALID) return;
-    pcb->pagetable[i] = 0;
-    MemoryFreePage(pcb->pagetable[i] >> MEM_L1FIELD_FIRST_BITNUM);
+    if ((pcb->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID) {
+      MemoryFreePage(pcb->pagetable[i] >> MEM_L1FIELD_FIRST_BITNUM);
+      pcb->pagetable[i] = 0;
+    }
   }
   MemoryFreePage((uint32) pcb->sysStackPtr >> MEM_L1FIELD_FIRST_BITNUM);
 

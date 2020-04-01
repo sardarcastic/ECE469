@@ -516,8 +516,8 @@ dointerrupt (unsigned int cause, unsigned int iar, unsigned int isr,
       } while (i > 1);
       break;
     case TRAP_ACCESS:
-      printf ("Exiting after illegal access at iar=0x%x, isr=0x%x\n", iar, isr);
-      exitsim ();
+      //printf ("Exiting after illegal access at iar=0x%x, isr=0x%x\n", iar, isr);
+      MemoryPageFaultHandler(currentPCB);
       break;
     case TRAP_ADDRESS:
       printf ("Exiting after illegal address at iar=0x%x, isr=0x%x\n",

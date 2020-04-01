@@ -74,6 +74,7 @@ void MemoryModuleInit() {
   for (i = pagestart; i < freemapmax; i++) {
     MemorySetFreemap(i);
   }
+  // printf("MemoryModuleInit: nfreepages %d\n", nfreepages);
 }
 
 
@@ -208,6 +209,14 @@ int MemoryPageFaultHandler(PCB *pcb) {
   uint32 fault_pagenum = fault_addr >> MEM_L1FIELD_FIRST_BITNUM;
   uint32 stack_pagenum = usr_stack_addr >> MEM_L1FIELD_FIRST_BITNUM;
 
+  printf("MEMFaultHandler %x %x \n", fault_addr, usr_stack_addr);
+  if (fault_pagenum >= MEM_L1TABLE_SIZE) {
+    printf("PID: %d: 0x%x address exceeds maximum virtual address\n", fault_addr, GetPidFromAddress(pcb));
+    printf("  killing PID: %d\n", GetCurrentPid());
+    ProcessKill();
+    return MEM_FAIL;
+  }
+
   if (fault_pagenum < stack_pagenum) {
     printf("PID: %d SEGFAULT\n", GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
@@ -215,6 +224,7 @@ int MemoryPageFaultHandler(PCB *pcb) {
     return MEM_FAIL;
   }
   else {
+    printf("MemoryPageFaultHandler: Growing call stack of PID: %d\n", GetPidFromAddress(pcb));
     npg = MemoryAllocPageEasy(pcb);
     pcb->pagetable[fault_pagenum] = MemorySetupPte(npg);
     pcb->npages++;
@@ -231,8 +241,11 @@ int MemoryPageFaultHandler(PCB *pcb) {
 int MemoryAllocPageEasy(PCB *pcb) {
   uint32 pagenum;
   if ((pagenum = MemoryAllocPage()) == 0) {
-    printf("MemoryPageFaultHandler: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
+    // printf("MemoryAllocPageEasy: killing pagenum: %d\n", pagenum);
+    // printf("MemoryAllocPageEasy: killing nfreepages: %d\n", nfreepages);
+    printf("MemoryAllocPageEasy: PID: %d no more pages to allocate\n", GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
+    ProcessKill();
   }
   return pagenum;
 }
@@ -241,7 +254,10 @@ int MemoryAllocPage(void) {
   int i;
   int j;
   uint32 tmp;
-  if (nfreepages == 0) return 0;
+  if (nfreepages == 0) {
+    // printf("MemoryAllocPage: returning zero nfreepags: %d\n", nfreepages);
+    return 0;
+  }
 
   for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
     if (freemap[i] != 0) {
@@ -249,6 +265,7 @@ int MemoryAllocPage(void) {
       for (j = 0; j < 32; j++) {
         if ((tmp & 0x1) == 1) {
           nfreepages--;
+	  // printf("MemoryAllocPage: nfreepags: %d\n", nfreepages);
 	  freemap[i] &= invert(0x1 << j);
           return (i*32 + j);
         }
