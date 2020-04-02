@@ -29,6 +29,10 @@ void MemoryFreePage(uint32 page);
 uint32 MemorySetupPte (uint32 page);
 void MemoryFreePte (uint32 pte);
 
+uint32 MemorySetPteReadOnly(uint32 pte);
+void incrementRefTable(uint32 pte);
+void MemoryROPViolationHandler(PCB*pcb);
+
 uint32 malloc(PCB* pcb, int memsize);
 uint32 mfree(PCB* pcb, void* mem);
 

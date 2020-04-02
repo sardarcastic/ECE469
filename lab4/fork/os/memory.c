@@ -1,4 +1,4 @@
-//
+//o
 //	memory.c
 //
 //	Routines for dealing with memory management.
@@ -14,6 +14,8 @@
 
 // num_pages = size_of_memory / size_of_one_page
 static uint32 freemap[MEM_FREEMAP_SIZE];
+static uint8 pageRefCounter[MEM_REF_COUNTER_SIZE]; //should only be 512 elements (for each page available)
+
 static uint32 pagestart;
 static int nfreepages;
 static int freemapmax;
@@ -75,6 +77,8 @@ void MemoryModuleInit() {
     MemorySetFreemap(i);
   }
   // printf("MemoryModuleInit: nfreepages %d\n", nfreepages);
+  for (i = 0; i < MEM_REF_COUNTER_SIZE; i++)
+    pageRefCounter[i] = 0;
 }
 
 
@@ -247,6 +251,8 @@ int MemoryAllocPageEasy(PCB *pcb) {
     printf("  killing PID: %d\n", GetCurrentPid());
     ProcessKill();
   }
+  // incrementing the ref counter for this particular page
+  pageRefCounter[pagenum]++;
   return pagenum;
 }
 
@@ -283,6 +289,7 @@ void MemorySetFreemap(uint32 page) {
 void MemoryFreePage(uint32 page) {
   MemorySetFreemap(page);
   nfreepages++;
+  pageRefCounter[page]--;
 }
 
 void MemoryFreePte(uint32 pte) {
@@ -292,6 +299,35 @@ void MemoryFreePte(uint32 pte) {
 uint32 MemorySetupPte (uint32 page) {
   //printf("MemorySetupPte: %x\n", (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID);
   return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
+}
+
+uint32 MemorySetPteReadOnly(uint32 pte){
+  return ( (pte & MEM_PTE_MASK) | MEM_PTE_READONLY);
+}
+
+void incrementRefTable(uint32 pte){
+  uint32 pageNum;
+  pageNum = (pte & MEM_PTE_MASK) >> MEM_L1FIELD_FIRST_BITNUM;
+  pageRefCounter[pageNum]++;
+}
+
+//---------------------------------------------------------------------------
+// Handler for handling when a write is attempted on a page that is read-only
+//
+//---------------------------------------------------------------------------
+void MemoryROPViolationHandler(PCB*pcb){
+  uint32 culprit_address = pcb->currentSavedFrame[PROCESS_STACK_FAULT];
+  uint32 culprit_pageNum = culprit_address >> MEM_L1FIELD_FIRST_BITNUM;
+
+  // If only one process is using a page, then allow it to be written to and return
+  if (pageRefCounter[culprit_pageNum] == 1){
+    pcb->pagetable[culprit_pageNum] = (culprit_address & MEM_PTE_MASK) | MEM_PTE_VALID;
+    return;
+  }
+  // Copying the entire page to a new page for this process (decrementing old ref page)
+  else{
+  }
+    return;
 }
 
 uint32 malloc(PCB* pcb, int memsize) {

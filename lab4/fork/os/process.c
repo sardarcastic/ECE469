@@ -981,3 +981,62 @@ void ProcessKill() {
   ProcessDestroy(currentPCB);
   ProcessSchedule();
 }
+
+//--------------------------------------------------------------------------
+// ProcessRealFork
+// The argument given is the process that is to be forked
+//
+// "returns" zero for child process (using ProcessSetResult)
+// "returns" the child PID for the parent process
+//--------------------------------------------------------------------------
+void ProcessRealFork(PCB* pcb){
+  int new_pcb_index;
+  int i;
+  int page_to_alloc;
+  PCB* childPCB;
+  Link *l = NULL;
+  
+  // Finding a free PCB to fork the current one into
+  for (i = 0; i < PROCESS_MAX_PROCS; i++){
+    if ((pcbs[i] && PROCESS_STATUS_FREE) == PROCESS_STATUS_FREE)
+      break;
+  }
+  new_pcb_index = i;
+  childPCB = pcbs[i];
+  
+  // Copying the parent PCB to the child PCB
+  bcopy((char *)currentPCB, (char *)childpcb, sizeof(PCB));
+  
+  // copying data from parent's pagetable to the child's
+  i = 0;
+  while (currentPCB->pagetable[i] != 0){
+    // Setting all valid PTEs to read only before copying them over
+    currentPCB->pagetable[i] = MemorySetPteReadOnly(currentPCB->pagetable[i]);
+    childPCB->pagetable[i] = currentPCB->pagetable[i];
+    i++;
+  }
+    
+  // Incrementing reference counters for physical pages
+  i = 0;
+  while(childPCB->pagetable[i] != 0]{
+    incrementRefTable(childPCB->pagetable[i]);
+    i++;
+  }
+  
+  // *(Should have a trap handler built for the inevitable write to read only errors)
+
+  
+  // fix the various system stack pointers and values on the system
+  // stack when creating the new system stack page. 
+
+  
+  // Allowing the process to be ran and adding it to the run queue
+  ProcessSetStatus(childPCB, PROCESS_STATUS_RUNNABLE);
+  childPCB->l = AQueueAllocLink(pcb)
+  AQueueInsertLast(&runQueue, childPCB->l);
+
+  // Setting the return values for the parent and child processes
+  ProcessSetResult(pbc, new_pcb_index);
+  ProcessSetResult(childPCB, 0);
+  return;
+}

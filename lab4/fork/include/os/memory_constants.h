@@ -32,6 +32,7 @@
 #define MEM_PTE_MASK			invert(MEM_PTE_READONLY | MEM_PTE_DIRTY | MEM_PTE_VALID)
 #define MEM_MAX_32_PAGE			((0xffffffff >> MEM_L1FIELD_FIRST_BITNUM) + 1)
 
+#define MEM_REF_COUNTER_SIZE            (MEM_MAX_SIZE >> MEM_L1FIELD_FIRST_BITNUM) 
 //--------------------------------------------------------
 
 
