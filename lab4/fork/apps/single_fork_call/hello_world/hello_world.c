@@ -14,8 +14,10 @@ void main (int argc, char *argv[])
   s_procs_completed = dstrtol(argv[1], NULL, 10);
 
   // Now print a message to show that everything worked
-  Printf("hello_world (%d): Hello world!\n", getpid());
-
+  if (fork() == 0)
+    Printf("hello_world from parent (%d): Hello world!\n", getpid());
+  else
+    Printf("hello_world from CHILD (%d): Hello world!\n", getpid());
   // Signal the semaphore to tell the original process that we're done
   if(sem_signal(s_procs_completed) != SYNC_SUCCESS) {
     Printf("hello_world (%d): Bad semaphore s_procs_completed (%d)!\n", getpid(), s_procs_completed);

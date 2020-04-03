@@ -102,6 +102,7 @@ void ProcessKill();
 // Put any functions prototypes that you define here.
 //-------------------------------------------------------
 void ProcessRealFork(PCB*);
-
+void ProcessCopySystemStack(PCB* parentPCB,PCB*  childPCB);
+void ProcessPrintAllMem(PCB*);
 
 #endif	/* __process_h__ */

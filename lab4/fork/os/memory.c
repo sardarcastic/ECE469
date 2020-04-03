@@ -14,7 +14,7 @@
 
 // num_pages = size_of_memory / size_of_one_page
 static uint32 freemap[MEM_FREEMAP_SIZE];
-static uint8 pageRefCounter[MEM_REF_COUNTER_SIZE]; //should only be 512 elements (for each page available)
+static uint32 pageRefCounter[MEM_REF_COUNTER_SIZE]; //should only be 512 elements
 
 static uint32 pagestart;
 static int nfreepages;
@@ -71,14 +71,14 @@ void MemoryModuleInit() {
 
   for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
     freemap[i] = 0;
+    pageRefCounter[i] = 1;
   }
 
   for (i = pagestart; i < freemapmax; i++) {
     MemorySetFreemap(i);
+    pageRefCounter[i] = 0;
   }
   // printf("MemoryModuleInit: nfreepages %d\n", nfreepages);
-  for (i = 0; i < MEM_REF_COUNTER_SIZE; i++)
-    pageRefCounter[i] = 0;
 }
 
 
@@ -293,6 +293,11 @@ void MemoryFreePage(uint32 page) {
     MemorySetFreemap(page);
     nfreepages++;
   }
+  else if (pageRefCounter[page] < 0){
+    printf("Freeing a page that isn't in use\n");
+    printf("Killing process\n");
+    ProcessKill();
+  }
     
 }
 
@@ -306,13 +311,14 @@ uint32 MemorySetupPte (uint32 page) {
 }
 
 uint32 MemorySetPteReadOnly(uint32 pte){
-  return ( (pte & MEM_PTE_MASK) | MEM_PTE_READONLY);
+  return ( pte | MEM_PTE_READONLY);
 }
 
 void incrementRefTable(uint32 pte){
   uint32 pageNum;
   pageNum = (pte & MEM_PTE_MASK) >> MEM_L1FIELD_FIRST_BITNUM;
   pageRefCounter[pageNum]++;
+  printf("Number of processes using page %d is: %d\n", pageNum, pageRefCounter[pageNum]); 
 }
 
 //---------------------------------------------------------------------------
@@ -322,30 +328,32 @@ void incrementRefTable(uint32 pte){
 void MemoryROPViolationHandler(PCB*pcb){
   uint32 culprit_address = pcb->currentSavedFrame[PROCESS_STACK_FAULT];
   uint32 culprit_pageNum = culprit_address >> MEM_L1FIELD_FIRST_BITNUM;
+  uint32 associated_pte;
+  uint32 culprit_physicalAddr = MemoryTranslateUserToSystem(pcb, culprit_address);
+  uint32 new_physicalAddr;
   uint32 i;
-  uint32 pageTableIndex;
   uint32 pagenum_alloc;
   
   // Finding pageTableIndex
   i = 0;
   while(pcb->pagetable[i] != culprit_pageNum)
     i++;
-  pageTableIndex = i;
+  associated_pte = pcb->pagetable[i];
   
   // If only one process is using a page, then allow it to be written to and return
   if (pageRefCounter[culprit_pageNum] == 1){
-    pcb->pagetable[pageTableIndex] = (culprit_address & MEM_PTE_MASK) | MEM_PTE_VALID;
+    pcb->pagetable[i] = (culprit_address & MEM_PTE_MASK) | MEM_PTE_VALID;
     return;
   }
   // Copying the entire page to a new page for this process (decrementing old ref page)
   else{
-    // Decrementing the ref counter for old page
-    pageRefCounter[culprit_pageNum]--;
-
     // Allocating a new page and copying all the data from the old page here
     pagenum_alloc = MemoryAllocPageEasy(pcb);
-    pcb->pagetable[pageTableIndex] = MemorySetupPte(pagenum_alloc);
-    MemoryPageCopy(culprit_address, pcb->pagetable[pageTableIndex]);
+    pcb->pagetable[i] = MemorySetupPte(pagenum_alloc);
+    new_physicalAddr = MemoryTranslateUserToSystem(pcb, pagenum_alloc);
+    MemoryPageCopy(culprit_physicalAddr, new_physicalAddr);
+    // Decrementing the ref counter for old page
+    pageRefCounter[culprit_pageNum]--;
   }
     return;
 }
@@ -354,61 +362,12 @@ void MemoryPageCopy(uint32 srcAddress, uint32 destAddress){
   unsigned char* src;
   unsigned char* dest;
 
-  src = srcAddress;
-  dest = destAddress;
+  src = (unsigned char*)srcAddress;
+  dest = (unsigned char*)destAddress;
   
   bcopy(src, dest, MEM_PAGE_SIZE);
 
   return;
-}
-//
-//
-//
-void MemoryCopySystemStack(PCB* parentPCB, PCB* childPCB){
-  uint32 pagenum_alloc;
-  uint32 *stackframe;
-  int i;
-  uint32 parentBaseAddr;
-  uint32 childBaseAddr;
-  uint32 parentTopAddr;
-
-  uint32* tmpPtr;
-
-  // Allocating a new page and setting stack frame pointer equal to that
-  pagenum_alloc = MemoryAllocPageEasy(childPCB);
-  stackframe = (uint32*) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
-
-  // Calculating the base address of the parent system stack (and setting the base of child's
-  parentBaseAddr = (uint32)(parentPCB->sysStackPtr) + parentPCB->sysStackArea;
-  childBaseAddr =  ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
-
-  parentTopAddr = parentBaseAddr - parentPCB->sysStackArea;
-    
-  // Copying the entire system stack from the parent to the child
-  bcopy(&parentBaseAddr, stackframe, parentPCB->stsStackArea);
-
-  // Changing the child sys stack pointer so that it points inside its sys stack page
-  childPCB->sysStackPtr = (parentPCB->sysStackPtr - (uint32*)parentBaseAddr) + (uint32)childBaseAddr;
-  
-  // Iterating through the child sys stack and changing addresses for areas where
-  // the address is within the parent's stack
-  // starts at base of child stack (top addr) and goes up (to lower addresses)
-  tmpPtr = stackframe;
-  
-  while (tmpPtr != childPCB->sysStackPtr){
-    // If the address is within parent sys stack, change it for the child
-    if (*tmpPtr <= parentBaseAddr | *tmpPtr >= *(parentPCB->sysStackPtr)){
-      *tmpPtr = (*tmpPtr - parentBaseAddr + childBaseAddr);
-    }
-    tmpPtr -= sizeof(uint32);
-  }
-  // If the stack pointer address needs to be changed
-  if (*tmpPtr <= parentBaseAddr | *tmpPtr >= *(parentPCB->sysStackPtr)){
-      *tmpPtr = (*tmpPtr - parentBaseAddr + childBaseAddr);
-    }
-  // The current stack frame pointer is set to the base of the current interrupt stack frame.
-  childPCB->currentSavedFrame = stackframe;
-  
 }
 
 

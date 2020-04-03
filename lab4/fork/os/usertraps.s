@@ -273,4 +273,5 @@ _mfree:
 _fork:
         trap    #0x430
         jr      r31
+	nop
 .endproc _fork

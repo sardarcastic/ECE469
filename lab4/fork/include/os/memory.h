@@ -33,7 +33,6 @@ uint32 MemorySetPteReadOnly(uint32 pte);
 void incrementRefTable(uint32 pte);
 void MemoryROPViolationHandler(PCB*pcb);
 void MemoryPageCopy(uint32 srcAddress, uint32 destAddress);
-void MemoryCopySystemStack(PCB* parentPCB,PCB*  childPCB);
   
 uint32 malloc(PCB* pcb, int memsize);
 uint32 mfree(PCB* pcb, void* mem);
