@@ -1028,7 +1028,7 @@ void ProcessRealFork(PCB* pcb){
   
   // fix the various system stack pointers and values on the system
   // stack when creating the new system stack page. 
-
+  MemoryCopySystemStack(pcb, childPCB);
   
   // Allowing the process to be ran and adding it to the run queue
   ProcessSetStatus(childPCB, PROCESS_STATUS_RUNNABLE);
