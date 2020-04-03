@@ -1,0 +1,192 @@
+cd ../../bin; dlxsim -x os.dlx.obj -a -u makeprocs.dlx.obj; ee469_fixterminal
+Stack=0x1fffd0, pc starting at 0x118e8
+Got 2 arguments.
+Available memory: 0x21358 -> 0x200000.
+Argument count is 2.
+Argument 0 is -u.
+Argument 1 is makeprocs.dlx.obj.
+-------------------------------------------------------------------------------------
+makeprocs (31): starting
+
+hello_world (30): Hello world!
+About to access memory beyond the maximum virtual addres (PID: 29)
+Address of the first memory location: 1048292 (value there : 7)
+MEMFaultHandler 0 ffed0 
+PID: 29 SEGFAULT
+  killing PID: 29
+About to perform invalid memory access outside of allocated page (PID: 28)
+The address of allocated memory is: 1048292 (the value is: 7)
+MEMFaultHandler fe000 ffed0 
+PID: 28 SEGFAULT
+  killing PID: 28
+MEMFaultHandler fe000 fedb0 
+MemoryPageFaultHandler: Growing call stack of PID: 27
+User function PID 27 grew call stack bigger than one page
+hello_world (26): Hello world!
+hello_world (25): Hello world!
+hello_world (24): Hello world!
+hello_world (23): Hello world!
+hello_world (22): Hello world!
+hello_world (21): Hello world!
+hello_world (20): Hello world!
+hello_world (19): Hello world!
+hello_world (18): Hello world!
+hello_world (17): Hello world!
+hello_world (16): Hello world!
+hello_world (15): Hello world!
+hello_world (14): Hello world!
+hello_world (13): Hello world!
+hello_world (12): Hello world!
+hello_world (11): Hello world!
+hello_world (10): Hello world!
+hello_world (9): Hello world!
+hello_world (8): Hello world!
+hello_world (7): Hello world!
+hello_world (6): Hello world!
+hello_world (5): Hello world!
+hello_world (4): Hello world!
+hello_world (3): Hello world!
+hello_world (2): Hello world!
+hello_world (1): Hello world!
+hello_world (0): Hello world!
+hello_world (30): Hello world!
+hello_world (29): Hello world!
+hello_world (28): Hello world!
+hello_world (27): Hello world!
+hello_world (26): Hello world!
+hello_world (25): Hello world!
+hello_world (24): Hello world!
+hello_world (23): Hello world!
+hello_world (22): Hello world!
+hello_world (21): Hello world!
+hello_world (20): Hello world!
+hello_world (19): Hello world!
+hello_world (18): Hello world!
+hello_world (17): Hello world!
+hello_world (16): Hello world!
+hello_world (15): Hello world!
+hello_world (14): Hello world!
+hello_world (13): Hello world!
+hello_world (12): Hello world!
+hello_world (11): Hello world!
+hello_world (10): Hello world!
+hello_world (9): Hello world!
+hello_world (8): Hello world!
+hello_world (7): Hello world!
+hello_world (6): Hello world!
+hello_world (5): Hello world!
+hello_world (4): Hello world!
+hello_world (3): Hello world!
+hello_world (2): Hello world!
+hello_world (1): Hello world!
+hello_world (0): Hello world!
+hello_world (30): Hello world!
+hello_world (29): Hello world!
+hello_world (28): Hello world!
+hello_world (27): Hello world!
+hello_world (26): Hello world!
+hello_world (25): Hello world!
+hello_world (24): Hello world!
+hello_world (23): Hello world!
+hello_world (22): Hello world!
+hello_world (21): Hello world!
+hello_world (20): Hello world!
+hello_world (19): Hello world!
+hello_world (18): Hello world!
+hello_world (17): Hello world!
+hello_world (16): Hello world!
+hello_world (15): Hello world!
+hello_world (14): Hello world!
+hello_world (13): Hello world!
+hello_world (12): Hello world!
+hello_world (11): Hello world!
+hello_world (10): Hello world!
+hello_world (9): Hello world!
+hello_world (8): Hello world!
+hello_world (7): Hello world!
+hello_world (6): Hello world!
+hello_world (5): Hello world!
+hello_world (4): Hello world!
+hello_world (3): Hello world!
+hello_world (2): Hello world!
+hello_world (1): Hello world!
+hello_world (0): Hello world!
+hello_world (30): Hello world!
+hello_world (29): Hello world!
+hello_world (28): Hello world!
+hello_world (27): Hello world!
+hello_world (26): Hello world!
+hello_world (25): Hello world!
+hello_world (24): Hello world!
+hello_world (23): Hello world!
+hello_world (22): Hello world!
+hello_world (21): Hello world!
+hello_world (20): Hello world!
+SIM PROC started (19)
+SIM PROC started (18)
+SIM PROC started (17)
+SIM PROC started (16)
+SIM PROC started (15)
+SIM PROC started (14)
+SIM PROC started (13)
+SIM PROC started (12)
+SIM PROC started (11)
+SIM PROC started (10)
+SIM PROC started (9)
+SIM PROC started (8)
+SIM PROC started (7)
+SIM PROC started (6)
+SIM PROC started (5)
+SIM PROC started (4)
+SIM PROC started (3)
+SIM PROC started (2)
+SIM PROC started (1)
+SIM PROC started (0)
+SIM PROC started (30)
+SIM PROC started (29)
+SIM PROC started (28)
+SIM PROC started (27)
+SIM PROC started (26)
+SIM PROC started (25)
+SIM PROC started (24)
+SIM PROC started (23)
+SIM PROC started (22)
+SIM PROC started (21)
+SIM PROC (19): Done!
+SIM PROC (18): Done!
+SIM PROC (17): Done!
+SIM PROC (16): Done!
+SIM PROC (15): Done!
+SIM PROC (14): Done!
+SIM PROC (13): Done!
+SIM PROC (12): Done!
+SIM PROC (11): Done!
+SIM PROC (10): Done!
+SIM PROC (9): Done!
+SIM PROC (8): Done!
+SIM PROC (7): Done!
+SIM PROC (6): Done!
+SIM PROC (5): Done!
+SIM PROC (4): Done!
+SIM PROC (3): Done!
+SIM PROC (2): Done!
+SIM PROC (1): Done!
+SIM PROC (0): Done!
+SIM PROC (30): Done!
+SIM PROC (29): Done!
+SIM PROC (28): Done!
+SIM PROC (27): Done!
+SIM PROC (26): Done!
+SIM PROC (25): Done!
+SIM PROC (24): Done!
+SIM PROC (23): Done!
+SIM PROC (22): Done!
+SIM PROC (21): Done!
+-------------------------------------------------------------------------------------
+makeprocs (31): All other processes completed, exiting main process.
+No runnable processes - exiting!
+Exiting at program request.
+Instructions executed: 514336726
+Time simulated: 514.337 secs
+Real time elapsed: 21.855 secs
+Execution rate: 23.53M simulated instructions per real second.
