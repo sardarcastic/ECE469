@@ -42,6 +42,8 @@ typedef struct PCB {
   uint32	pagetable[MEM_L1TABLE_SIZE]; // Statically allocated page table
   int		npages;		// Number of pages allocated to this process
   Link		*l;		// Used for keeping PCB in queues
+  struct PCB    *child;
+  struct PCB    *parent;
 } PCB;
 
 extern PCB	*currentPCB;

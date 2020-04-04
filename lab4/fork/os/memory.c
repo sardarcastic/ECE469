@@ -332,40 +332,64 @@ void MemoryROPViolationHandler(PCB*pcb){
   uint32 culprit_physPage = culprit_physicalAddr >> MEM_L1FIELD_FIRST_BITNUM;
   uint32 new_physicalAddr;
   uint32 pagenum_alloc;
-
-  /*// Debugging messages
-  printf("MemoryROPViolationHandler:\n");
-  printf("  The culprit virtual address is: 0x%x\n", culprit_address);
-  printf("  The culprit virtual page number is : 0x%x\n", culprit_pageNum);
-  printf("  The pte of this page for this process is: 0x%x\n", associated_pte);
-  // ------------------
-  */
+  int i;
   
   // If only one process is using a page, then allow it to be written to and return
   // Otherwise copy entire page to new page for this process (dec the ref page count)
   if (pageRefCounter[culprit_physPage] == 1){
-    //printf("  page has one ref\n");
-    pcb->pagetable[culprit_pageNum] = (associated_pte & MEM_PTE_MASK) | MEM_PTE_VALID;
+    // Only want to turn ROP bit, not the dirty bit
+    pcb->pagetable[culprit_pageNum] = associated_pte ^ MEM_PTE_READONLY;
   }
   else if (pageRefCounter[culprit_physPage] > 1){
-    // printf("  page has %d ref\n", pageRefCounter[culprit_physPage]);
     // Allocating a new page and copying all the data from the old page here
-    // printf("yo\n");
     pagenum_alloc = MemoryAllocPageEasy(pcb);
-    // printf("yo\n");
     pcb->pagetable[culprit_pageNum] = MemorySetupPte(pagenum_alloc);
-    // printf("yo\n");
+    // Setting the dirty bit if the dirty bit was set before
+    if ( (associated_pte & MEM_PTE_DIRTY) == MEM_PTE_DIRTY )
+      pcb->pagetable[culprit_pageNum] |= MEM_PTE_DIRTY;
     new_physicalAddr = pcb->pagetable[culprit_pageNum] & MEM_PTE_MASK;
-    // printf("yo\n");
     MemoryPageCopy(culprit_physicalAddr, new_physicalAddr);
-    // printf("yo\n");
     // Decrementing the ref counter for old page
     pageRefCounter[culprit_physPage]--;
-    // printf("    new phys page addr: 0x%x\n", new_physicalAddr);
-    // printf("    new pte entry is 0x%x\n", pcb->pagetable[culprit_pageNum]);
   }
   else{
     printf("There's been a mistake somewhere\n");
+  }
+
+  // Q4 addition
+  printf("After Processing ROP Violation: \n");
+
+  // if the current PCB is the parent
+  if (currentPCB->parent == NULL){
+    printf("  Parent is inside handler (PID: %d)\n", GetPidFromAddress(currentPCB));
+    printf("    Valid PTEs of Parent (PID: %d)\n", GetPidFromAddress(currentPCB));
+    for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+      if ( (currentPCB->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+	printf("      Virtual Page 0x%x: PTE - 0x%x\n", i, currentPCB->pagetable[i]);
+      }
+    }
+    printf("    Valid PTEs of Child (PID: %d)\n", GetPidFromAddress(currentPCB->child));
+    for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+      if ( (currentPCB->child->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+	printf("      Virtual Page 0x%x: PTE - 0x%x\n", i, currentPCB->child->pagetable[i]);
+      }
+    }
+  }
+  // if the currentPCB is the CHILD
+  else{
+    printf("  CHILD is inside handler (PID: %d)\n", GetPidFromAddress(currentPCB));
+    printf("    Valid PTEs of Parent (PID: %d)\n", GetPidFromAddress(currentPCB->parent));
+    for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+      if ( (currentPCB->parent->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+	printf("      Virtual Page 0x%x: PTE - 0x%x\n", i, currentPCB->parent->pagetable[i]);
+      }
+    }
+    printf("    Valid PTEs of Child (PID: %d)\n", GetPidFromAddress(currentPCB));
+    for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+      if ( (currentPCB->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+	printf("      Virtual Page 0x%x: PTE - 0x%x\n", i, currentPCB->pagetable[i]);
+      }
+    }
   }
     return;
 }

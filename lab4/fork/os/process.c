@@ -415,6 +415,14 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // Copy the process name into the PCB.
   dstrcpy(pcb->name, name);
 
+  //-------------------------------------------------------------------------
+  // Q4 revision, to help determine when a process has a child or parent
+  // (Would actually need to implement the child field as a list of some sort
+  // but that doesn't seem necessary for a light implementation)
+  //-------------------------------------------------------------------------
+  pcb->child = NULL;
+  pcb->parent = NULL;
+
   //----------------------------------------------------------------------
   // This section initializes the memory for this process
   //----------------------------------------------------------------------
@@ -997,9 +1005,6 @@ void ProcessRealFork(PCB* pcb){
   PCB* childPCB;
   int intrs; 
 
-  //printf("Initial pcb mem dum: \n");
-  //ProcessPrintAllMem(currentPCB);
-  
   // Finding a free PCB to fork the current one into
   intrs = DisableIntrs ();
   dbprintf ('I', "Old interrupt value was 0x%x.\n", intrs);
@@ -1023,20 +1028,13 @@ void ProcessRealFork(PCB* pcb){
   RestoreIntrs (intrs);
  
   // Copying the parent PCB to the child PCB
-  bcopy((char *)currentPCB, (char *)childPCB, sizeof(PCB));
-
-  // Everything above is good -------------------
-  
+  bcopy((char *)currentPCB, (char *)childPCB, sizeof(PCB));  
   
   // copying data from parent's pagetable to the child's
   for (i = 0; i < MEM_L1TABLE_SIZE; i++){
     if ( (currentPCB->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
       // Setting all valid PTEs to read only before copying them over
-      
-      //printf("Before: 0x%x\n", currentPCB->pagetable[i]);
       currentPCB->pagetable[i] |= MEM_PTE_READONLY;
-      //printf("After: 0x%x\n", currentPCB->pagetable[i]);
-      
       childPCB->pagetable[i] = currentPCB->pagetable[i];
       // Incrementing reference counters for physical pages
       incrementRefTable(childPCB->pagetable[i]);
@@ -1047,9 +1045,6 @@ void ProcessRealFork(PCB* pcb){
   // stack when creating the new system stack page. 
   ProcessCopySystemStack(currentPCB, childPCB);
 
-
-  // Everything below is good ---------------------------
-  
   // Setting the return values for the parent and child processes
   ProcessSetResult (currentPCB, GetPidFromAddress(childPCB));
   ProcessSetResult (childPCB, 0);
@@ -1066,11 +1061,24 @@ void ProcessRealFork(PCB* pcb){
   }
   
   RestoreIntrs (intrs);
-  //printf("Parent pcb mem dum: \n");
-  //ProcessPrintAllMem(currentPCB);
-  //printf("Child pcb mem dum: \n");
-  //ProcessPrintAllMem(childPCB);
 
+  // Q4 printing valid PTEs for Parent and child
+  
+  printf("(after fork) Valid PTEs of Parent (PID: %d)\n", GetPidFromAddress(currentPCB));
+  for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+    if ( (currentPCB->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+      printf("   Virtual Page 0x%x: PTE - 0x%x\n", i, currentPCB->pagetable[i]);
+    }
+  }
+  printf("(after fork) Valid PTEs of Child (PID: %d)\n", GetPidFromAddress(childPCB));
+  for (i = 0; i < MEM_L1TABLE_SIZE; i++){
+    if ( (childPCB->pagetable[i] & MEM_PTE_VALID) == MEM_PTE_VALID){
+      printf("   Virtual Page 0x%x: PTE - 0x%x\n", i, childPCB->pagetable[i]);
+    }
+  }
+
+  currentPCB->child = childPCB;
+  childPCB->parent = currentPCB;
   
   return;
 }
@@ -1084,35 +1092,17 @@ void ProcessCopySystemStack(PCB* parentPCB, PCB* childPCB){
   // Allocating a new page and setting stack frame pointer equal to that
   pagenum_alloc = MemoryAllocPageEasy(childPCB);
   childPCB->sysStackArea = (uint32) (pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM);
-  /*
-  printf("Parent BEFORE copying: \n");
-  ProcessPrintAllMem(parentPCB);
-  printf("For the BEFORE child: \n");
-  ProcessPrintAllMem(childPCB);
-  */
+  
   // Copying parents system stack onto child's (doc)
   MemoryPageCopy(parentPCB->sysStackArea, childPCB->sysStackArea);
-  /*
-  printf("Stacks: \n\n");
-  printf("Parent AFTER copying: \n");
-  ProcessPrintAllMem(parentPCB);
-  printf("For the AFTER child: \n");
-  ProcessPrintAllMem(childPCB);
-  */
-  
+    
   // Fixing child sysStackPtr and curr saved frame pointer (might want to subtract this)
-  // childPCB->sysStackPtr = (uint32*)childPCB->sysStackArea + ((uint32*)parentPCB->sysStackArea - parentPCB->sysStackPtr);
   childPCB->sysStackPtr = (uint32 *) (childPCB->sysStackArea | ((uint32) parentPCB->sysStackPtr & MEM_ADDRESS_OFFSET_MASK));
-  /*
-  printf("Parent system stack pointer address: 0x%x Parent sysStackArea: 0x%x \nAnd what it points to: 0x%x\n", (uint32)parentPCB->sysStackPtr, parentPCB->sysStackArea, (uint32)*parentPCB->sysStackPtr);
-  printf("Child system stack pointer address: 0x%x Child sysStackArea: 0x%x \nAnd what it points to: 0x%x\n", (uint32)childPCB->sysStackPtr, childPCB->sysStackArea, (uint32)*childPCB->sysStackPtr); 
-  */
-  childPCB->currentSavedFrame = (uint32 *) (childPCB->sysStackArea | ((uint32) parentPCB->currentSavedFrame & MEM_ADDRESS_OFFSET_MASK));
-  
+  childPCB->currentSavedFrame = (uint32 *) (childPCB->sysStackArea | ((uint32) parentPCB->currentSavedFrame & MEM_ADDRESS_OFFSET_MASK));  
   childPCB->currentSavedFrame[PROCESS_STACK_PTBASE] = childPCB->pagetable;
 
   if (parentPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] != 0){
-    // manual said could be ignored, will likely need to come back later
+    // manual said could be ignored
     childPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] = (childPCB->sysStackArea | (parentPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] & MEM_ADDRESS_OFFSET_MASK));
   }
   
