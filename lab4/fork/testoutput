@@ -1,0 +1,54 @@
+cd ../../bin; dlxsim -x os.dlx.obj -a -u makeprocs.dlx.obj 5; ee469_fixterminal
+Stack=0x1fffc8, pc starting at 0x12c68
+Got 3 arguments.
+Available memory: 0x22cd8 -> 0x200000.
+Argument count is 3.
+Argument 0 is -u.
+Argument 1 is makeprocs.dlx.obj.
+Argument 2 is 5.
+makeprocs (31): Creating 5 hello_world processes
+-------------------------------------------------------------------------------------
+makeprocs (31): Creating 5 hello world's in a row, but only one runs at a time
+makeprocs (31): Creating hello world #0
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from parent (30): Hello world!
+hello_world (30): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from CHILD (29): Hello world!
+hello_world (29): Done!
+makeprocs (31): Creating hello world #1
+makeprocs (31): Creating hello world #2
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from parent (28): Hello world!
+hello_world (28): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from parent (27): Hello world!
+hello_world (27): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from CHILD (26): Hello world!
+hello_world (26): Done!
+makeprocs (31): Creating hello world #3
+makeprocs (31): Creating hello world #4
+-------------------------------------------------------------------------------------
+makeprocs (31): All other processes completed, exiting main process.
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from CHILD (25): Hello world!
+hello_world (25): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from parent (24): Hello world!
+hello_world (24): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from parent (23): Hello world!
+hello_world (23): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from CHILD (22): Hello world!
+hello_world (22): Done!
+Cpu: writing a read-only page, vaddr=0xff000
+hello_world from CHILD (21): Hello world!
+hello_world (21): Done!
+No runnable processes - exiting!
+Exiting at program request.
+Instructions executed: 19790549
+Time simulated: 19.791 secs
+Real time elapsed: 0.829 secs
+Execution rate: 23.88M simulated instructions per real second.

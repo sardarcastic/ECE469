@@ -213,7 +213,7 @@ int MemoryPageFaultHandler(PCB *pcb) {
   uint32 fault_pagenum = fault_addr >> MEM_L1FIELD_FIRST_BITNUM;
   uint32 stack_pagenum = usr_stack_addr >> MEM_L1FIELD_FIRST_BITNUM;
 
-  printf("MEMFaultHandler fault: 0x%x stack_ptr: 0x%x \n", fault_addr, usr_stack_addr);
+  printf("MEMFaultHandler %x %x \n", fault_addr, usr_stack_addr);
   if (fault_pagenum >= MEM_L1TABLE_SIZE) {
     printf("PID: %d: 0x%x address exceeds maximum virtual address\n", fault_addr, GetPidFromAddress(pcb));
     printf("  killing PID: %d\n", GetCurrentPid());
@@ -327,42 +327,42 @@ void incrementRefTable(uint32 pte){
 void MemoryROPViolationHandler(PCB*pcb){
   uint32 culprit_address = pcb->currentSavedFrame[PROCESS_STACK_FAULT];
   uint32 culprit_pageNum = culprit_address >> MEM_L1FIELD_FIRST_BITNUM;
-  uint32 associated_pte = pcb->pagetable[culprit_pageNum];
+  uint32 associated_pte = 0x0;
   uint32 culprit_physicalAddr = MemoryTranslateUserToSystem(pcb, culprit_address);
-  uint32 culprit_physPage = culprit_physicalAddr >> MEM_L1FIELD_FIRST_BITNUM;
   uint32 new_physicalAddr;
+  uint32 i = 0;
   uint32 pagenum_alloc;
 
-  /*// Debugging messages
-  printf("MemoryROPViolationHandler:\n");
-  printf("  The culprit virtual address is: 0x%x\n", culprit_address);
-  printf("  The culprit virtual page number is : 0x%x\n", culprit_pageNum);
-  printf("  The pte of this page for this process is: 0x%x\n", associated_pte);
+  // Debugging messages
+  printf("The culprit address is: 0x%x\n", culprit_address);
+  printf("The culprit page number is : 0x%x\n", culprit_pageNum);
+  printf("index into the page table is: %d\n", i);
+  printf("The pte of this page for this process is: 0x%x\n", associated_pte);
   // ------------------
-  */
+
+  // Finding PTE associated with the culprit pageNum
+  i = 0;
+  while(((pcb->pagetable[i] >> MEM_L1FIELD_FIRST_BITNUM) != culprit_pageNum) && (i < MEM_L1TABLE_SIZE))
+    i++;
+  if (i == MEM_L1TABLE_SIZE){
+    printf("This page does not exist in the pcb's pagetable\n");
+    return;
+  }
+  associated_pte = pcb->pagetable[i];
   
   // If only one process is using a page, then allow it to be written to and return
   // Otherwise copy entire page to new page for this process (dec the ref page count)
-  if (pageRefCounter[culprit_physPage] == 1){
-    //printf("  page has one ref\n");
-    pcb->pagetable[culprit_pageNum] = (associated_pte & MEM_PTE_MASK) | MEM_PTE_VALID;
+  if (pageRefCounter[culprit_pageNum] == 1){
+    pcb->pagetable[i] = (associated_pte & MEM_PTE_MASK) | MEM_PTE_VALID;
   }
-  else if (pageRefCounter[culprit_physPage] > 1){
-    // printf("  page has %d ref\n", pageRefCounter[culprit_physPage]);
+  else if (pageRefCounter[culprit_pageNum] > 1){
     // Allocating a new page and copying all the data from the old page here
-    // printf("yo\n");
     pagenum_alloc = MemoryAllocPageEasy(pcb);
-    // printf("yo\n");
-    pcb->pagetable[culprit_pageNum] = MemorySetupPte(pagenum_alloc);
-    // printf("yo\n");
-    new_physicalAddr = pcb->pagetable[culprit_pageNum] & MEM_PTE_MASK;
-    // printf("yo\n");
+    pcb->pagetable[i] = MemorySetupPte(pagenum_alloc);
+    new_physicalAddr = MemoryTranslateUserToSystem(pcb, pcb->pagetable[i]);
     MemoryPageCopy(culprit_physicalAddr, new_physicalAddr);
-    // printf("yo\n");
     // Decrementing the ref counter for old page
-    pageRefCounter[culprit_physPage]--;
-    // printf("    new phys page addr: 0x%x\n", new_physicalAddr);
-    // printf("    new pte entry is 0x%x\n", pcb->pagetable[culprit_pageNum]);
+    pageRefCounter[culprit_pageNum]--;
   }
   else{
     printf("There's been a mistake somewhere\n");

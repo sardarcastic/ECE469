@@ -440,7 +440,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   pagenum_alloc = MemoryAllocPageEasy(pcb);
   stackframe = (uint32*) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
   // (Question 3 addition)
-  pcb->sysStackArea = (pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM);
+  pcb->sysStackArea = ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
   
   pcb->npages = 6;
 
@@ -471,7 +471,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // STUDENT: setup the PTBASE, PTBITS, and PTSIZE here on the current
   // stack frame.
   //----------------------------------------------------------------------
-  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = (int) pcb->pagetable;
+  pcb->currentSavedFrame[PROCESS_STACK_PTBASE] = (uint32*) pcb->pagetable;
   pcb->currentSavedFrame[PROCESS_STACK_PTSIZE] = MEM_L1TABLE_SIZE;
   pcb->currentSavedFrame[PROCESS_STACK_PTBITS] = (MEM_L1FIELD_FIRST_BITNUM << 16) | MEM_L1FIELD_FIRST_BITNUM;
 
@@ -1037,7 +1037,7 @@ void ProcessRealFork(PCB* pcb){
       currentPCB->pagetable[i] |= MEM_PTE_READONLY;
       //printf("After: 0x%x\n", currentPCB->pagetable[i]);
       
-      childPCB->pagetable[i] = currentPCB->pagetable[i];
+      childPCB->pagetable[i] = currentPCB->pagetable[i] | MEM_PTE_READONLY;
       // Incrementing reference counters for physical pages
       incrementRefTable(childPCB->pagetable[i]);
     }
@@ -1045,7 +1045,7 @@ void ProcessRealFork(PCB* pcb){
    
   // fix the various system stack pointers and values on the system
   // stack when creating the new system stack page. 
-  ProcessCopySystemStack(currentPCB, childPCB);
+  ProcessCopySystemStack(pcb, childPCB);
 
 
   // Everything below is good ---------------------------
@@ -1083,7 +1083,7 @@ void ProcessCopySystemStack(PCB* parentPCB, PCB* childPCB){
 
   // Allocating a new page and setting stack frame pointer equal to that
   pagenum_alloc = MemoryAllocPageEasy(childPCB);
-  childPCB->sysStackArea = (uint32) (pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM);
+  childPCB->sysStackArea = (uint32) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
   /*
   printf("Parent BEFORE copying: \n");
   ProcessPrintAllMem(parentPCB);
@@ -1101,19 +1101,20 @@ void ProcessCopySystemStack(PCB* parentPCB, PCB* childPCB){
   */
   
   // Fixing child sysStackPtr and curr saved frame pointer (might want to subtract this)
-  // childPCB->sysStackPtr = (uint32*)childPCB->sysStackArea + ((uint32*)parentPCB->sysStackArea - parentPCB->sysStackPtr);
-  childPCB->sysStackPtr = (uint32 *) (childPCB->sysStackArea | ((uint32) parentPCB->sysStackPtr & MEM_ADDRESS_OFFSET_MASK));
+  childPCB->sysStackPtr = (uint32*)childPCB->sysStackArea + ((uint32*)parentPCB->sysStackArea - parentPCB->sysStackPtr);
   /*
   printf("Parent system stack pointer address: 0x%x Parent sysStackArea: 0x%x \nAnd what it points to: 0x%x\n", (uint32)parentPCB->sysStackPtr, parentPCB->sysStackArea, (uint32)*parentPCB->sysStackPtr);
   printf("Child system stack pointer address: 0x%x Child sysStackArea: 0x%x \nAnd what it points to: 0x%x\n", (uint32)childPCB->sysStackPtr, childPCB->sysStackArea, (uint32)*childPCB->sysStackPtr); 
   */
-  childPCB->currentSavedFrame = (uint32 *) (childPCB->sysStackArea | ((uint32) parentPCB->currentSavedFrame & MEM_ADDRESS_OFFSET_MASK));
+  childPCB->currentSavedFrame = (uint32*)childPCB->sysStackArea;
   
-  childPCB->currentSavedFrame[PROCESS_STACK_PTBASE] = childPCB->pagetable;
+  childPCB->currentSavedFrame[PROCESS_STACK_PTBASE] = (uint32*) childPCB->pagetable;
+  childPCB->currentSavedFrame[PROCESS_STACK_PTSIZE] = MEM_L1TABLE_SIZE;
+  childPCB->currentSavedFrame[PROCESS_STACK_PTBITS] = (MEM_L1FIELD_FIRST_BITNUM << 16) | MEM_L1FIELD_FIRST_BITNUM;
 
   if (parentPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] != 0){
     // manual said could be ignored, will likely need to come back later
-    childPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] = (childPCB->sysStackArea | (parentPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] & MEM_ADDRESS_OFFSET_MASK));
+    parentPCB->currentSavedFrame[PROCESS_STACK_PREV_FRAME] = 7;
   }
   
 }
