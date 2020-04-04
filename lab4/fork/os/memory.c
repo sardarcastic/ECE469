@@ -260,6 +260,7 @@ int MemoryAllocPage(void) {
   int i;
   int j;
   uint32 tmp;
+  
   if (nfreepages == 0) {
     // printf("MemoryAllocPage: returning zero nfreepags: %d\n", nfreepages);
     return 0;
@@ -287,13 +288,16 @@ void MemorySetFreemap(uint32 page) {
 }
 
 void MemoryFreePage(uint32 page) {
-  pageRefCounter[page]--;
-  // If no more processes are using this page, then we can set it as free
-  if (pageRefCounter[page] == 0){
+  // If only one process was using this page, then we can set it as free
+  if (pageRefCounter[page] == 1){
     MemorySetFreemap(page);
     nfreepages++;
+    pageRefCounter[page]--;
   }
-  else if (pageRefCounter[page] < 0){
+  else if (pageRefCounter[page] > 1){
+    pageRefCounter[page]--;
+  }
+  else{
     printf("Freeing a page that isn't in use\n");
     printf("Killing process\n");
     ProcessKill();
@@ -310,15 +314,10 @@ uint32 MemorySetupPte (uint32 page) {
   return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
 }
 
-uint32 MemorySetPteReadOnly(uint32 pte){
-  return ( pte | MEM_PTE_READONLY);
-}
-
 void incrementRefTable(uint32 pte){
   uint32 pageNum;
   pageNum = (pte & MEM_PTE_MASK) >> MEM_L1FIELD_FIRST_BITNUM;
-  pageRefCounter[pageNum]++;
-  printf("Number of processes using page %d is: %d\n", pageNum, pageRefCounter[pageNum]); 
+  pageRefCounter[pageNum]++; 
 }
 
 //---------------------------------------------------------------------------
@@ -333,27 +332,40 @@ void MemoryROPViolationHandler(PCB*pcb){
   uint32 new_physicalAddr;
   uint32 i;
   uint32 pagenum_alloc;
-  
-  // Finding pageTableIndex
+
+  // Finding PTE associated with the culprit pageNum
   i = 0;
-  while(pcb->pagetable[i] != culprit_pageNum)
+  while(((pcb->pagetable[i] >> MEM_L1FIELD_FIRST_BITNUM) != culprit_pageNum) && (i < MEM_L1TABLE_SIZE))
     i++;
-  associated_pte = pcb->pagetable[i];
-  
-  // If only one process is using a page, then allow it to be written to and return
-  if (pageRefCounter[culprit_pageNum] == 1){
-    pcb->pagetable[i] = (culprit_address & MEM_PTE_MASK) | MEM_PTE_VALID;
+  if (i == MEM_L1TABLE_SIZE){
+    printf("This page does not exist in the pcb's pagetable\n");
     return;
   }
-  // Copying the entire page to a new page for this process (decrementing old ref page)
-  else{
+  associated_pte = pcb->pagetable[i];
+
+  // Debugging messages
+  printf("The culprit address is: 0x%x\n", culprit_address);
+  printf("The culprit page number is : 0x%x\n", culprit_pageNum);
+  printf("index into the page table is: %d\n", i);
+  printf("The pte of this page for this process is: 0x%x\n", associated_pte);
+  // ------------------
+  
+  // If only one process is using a page, then allow it to be written to and return
+  // Otherwise copy entire page to new page for this process (dec the ref page count)
+  if (pageRefCounter[culprit_pageNum] == 1){
+    pcb->pagetable[i] = (associated_pte & MEM_PTE_MASK) | MEM_PTE_VALID;
+  }
+  else if (pageRefCounter[culprit_pageNum] > 1){
     // Allocating a new page and copying all the data from the old page here
     pagenum_alloc = MemoryAllocPageEasy(pcb);
     pcb->pagetable[i] = MemorySetupPte(pagenum_alloc);
-    new_physicalAddr = MemoryTranslateUserToSystem(pcb, pagenum_alloc);
+    new_physicalAddr = MemoryTranslateUserToSystem(pcb, pcb->pagetable[i]);
     MemoryPageCopy(culprit_physicalAddr, new_physicalAddr);
     // Decrementing the ref counter for old page
     pageRefCounter[culprit_pageNum]--;
+  }
+  else{
+    printf("There's been a mistake somewhere\n");
   }
     return;
 }
@@ -361,12 +373,15 @@ void MemoryROPViolationHandler(PCB*pcb){
 void MemoryPageCopy(uint32 srcAddress, uint32 destAddress){
   unsigned char* src;
   unsigned char* dest;
-
-  src = (unsigned char*)srcAddress;
-  dest = (unsigned char*)destAddress;
+  unsigned char* tmp;
+  int i;
+  uint32 pageMask = invert(MEM_ADDRESS_OFFSET_MASK);
   
+  src = (unsigned char*)(srcAddress & pageMask);
+  dest = (unsigned char*)(destAddress & pageMask);
+  //printf("Copying pages: \n");
+  //printf("Src addr: 0x%x -- Dest addr: 0x%x\n", (uint32)src, (uint32)dest);
   bcopy(src, dest, MEM_PAGE_SIZE);
-
   return;
 }
 

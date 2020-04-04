@@ -4,7 +4,7 @@
 void main (int argc, char *argv[])
 {
   sem_t s_procs_completed; // Semaphore to signal the original process that we're done
-
+  int forkResult;
   if (argc != 2) { 
     Printf("Usage: %s <handle_to_procs_completed_semaphore>\n"); 
     Exit();
@@ -14,7 +14,8 @@ void main (int argc, char *argv[])
   s_procs_completed = dstrtol(argv[1], NULL, 10);
 
   // Now print a message to show that everything worked
-  if (fork() == 0)
+  forkResult = fork();
+  if (forkResult == 0)
     Printf("hello_world from parent (%d): Hello world!\n", getpid());
   else
     Printf("hello_world from CHILD (%d): Hello world!\n", getpid());
