@@ -428,10 +428,11 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // for the system stack.
   //---------------------------------------------------------
   // 4 pages for user code and global data
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 5; i++) {
     pagenum_alloc = MemoryAllocPageEasy(pcb);
     pcb->pagetable[i] = MemorySetupPte(pagenum_alloc);
   }
+  pcb->heap_base = 4 << MEM_L1FIELD_FIRST_BITNUM; 
   // user stack
   pagenum_alloc = MemoryAllocPageEasy(pcb);
   pcb->pagetable[MEM_L1TABLE_SIZE - 1] = MemorySetupPte(pagenum_alloc);
@@ -440,7 +441,12 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   pagenum_alloc = MemoryAllocPageEasy(pcb);
   stackframe = (uint32*) ((pagenum_alloc << MEM_L1FIELD_FIRST_BITNUM) | (MEM_PAGE_SIZE - 4));
 
-  pcb->npages = 6;
+  //heap initialization
+  for (i = 0; i < MEM_MALLOC_META_SIZE; i++) {
+    pcb->malloc_meta[i] = 0;
+  }
+
+  pcb->npages = 7;
 
   // Now that the stack frame points at the bottom of the system stack memory area, we need to
   // move it up (decrement it) by one stack frame size because we're about to fill in the

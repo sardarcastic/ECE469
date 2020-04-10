@@ -32,8 +32,14 @@
 #define MEM_PTE_MASK			invert(MEM_PTE_READONLY | MEM_PTE_DIRTY | MEM_PTE_VALID)
 #define MEM_MAX_32_PAGE			((0xffffffff >> MEM_L1FIELD_FIRST_BITNUM) + 1)
 
+#define MEM_MALLOC_META_SIZE		256
 #define MEM_FINDFREE_MALLOC_STATUS      0x10000
+#define MEM_MALLOC_FIND_TAKEN		0x20000
 #define MEM_MALLOC_PARTITIONED          0x1
+#define MEM_MALLOC_TAKEN		0x2
+#define MEM_MALLOC_FIND_ORDER_MASK	0xff00
+#define MEM_MALLOC_FIND_INDEX_MASK	0xff
+#define MEM_MALLOC_MIN_SIZE		0x20
 //--------------------------------------------------------
 
 

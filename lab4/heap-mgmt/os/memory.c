@@ -295,24 +295,97 @@ uint32 MemorySetupPte (uint32 page) {
 }
 
 int findFreeMallocNode(PCB* pcb, int index, int order, int order_want) {
-  int ret1, ret2;
+  int ret1;
+  int ret2;
   
   if (order == order_want && pcb->malloc_meta[index] == 0) {
-    return MEM_FINDFREE_MALLOC_STATUS | index;
+    return MEM_FINDFREE_MALLOC_STATUS | (order << 8) | index;
+  }
+  else if ((pcb->malloc_meta[index] & MEM_MALLOC_TAKEN) == MEM_MALLOC_TAKEN) {
+    return MEM_MALLOC_FIND_TAKEN;
+  }
+  else if ((pcb->malloc_meta[index] & MEM_MALLOC_PARTITIONED) != MEM_MALLOC_PARTITIONED) {
+    return (order << 8) | index;
   }
 
-  if ((pcb->malloc_meta[index] == 0) return 0xffffffff;
-
-  int ret1 = findFreeMallocNode(pcb, 2*index + 1, order - 1, order_want);
+  ret1 = findFreeMallocNode(pcb, 2*index + 1, order - 1, order_want);
   if ((ret1 & MEM_FINDFREE_MALLOC_STATUS) == MEM_FINDFREE_MALLOC_STATUS) return ret1;
-  int ret2 = findFreeMallocNode(pcb, 2*index + 2, order - 1, order_want);
-  
+  ret2 = findFreeMallocNode(pcb, 2*index + 2, order - 1, order_want);
+  if ((ret2 & MEM_FINDFREE_MALLOC_STATUS) == MEM_FINDFREE_MALLOC_STATUS) return ret2;
+
+  if (ret1 == MEM_MALLOC_FIND_TAKEN) return ret2;
+  if (ret2 == MEM_MALLOC_FIND_TAKEN) return ret1;
+
+  if ((ret1 & MEM_MALLOC_FIND_ORDER_MASK) > (ret2 & MEM_MALLOC_FIND_ORDER_MASK)) {
+    return ret2;
+  } 
+  else { 
+    return ret1;
+  }
+}
+
+uint32 addressFromOrderIndex(int order, int index) {
+  order = 7 - order;
+  return (index - ((1 << order) - 1)) * sizeFromOrder(7 - order);
+}
+
+uint32 sizeFromOrder(int order) {
+  return (1 << order) * MEM_MALLOC_MIN_SIZE;
+}
+
+int partitionNode(PCB* pcb, int order, int index) {
+  pcb->malloc_meta[index] |= MEM_MALLOC_PARTITIONED;
+  printf("Created a right child node (order = %d, addr = %x, size = %d) of parent (order = %d, addr = %x, size = %d\n", order - 1, addressFromOrderIndex(order - 1, 2*index + 2), sizeFromOrder(order - 1), order, addressFromOrderIndex(order, index), sizeFromOrder(order));
+  printf("Created a left child node (order = %d, addr = %x, size = %d) of parent (order = %d, addr = %x, size = %d\n", order - 1, addressFromOrderIndex(order - 1, 2*index + 1), sizeFromOrder(order - 1), order, addressFromOrderIndex(order, index), sizeFromOrder(order));
+  return MEM_SUCCESS; 
 }
 
 uint32 malloc(PCB* pcb, int memsize) {
-  return MEM_FAIL;
+  int tmpmul = 32;
+  int order = 0;
+  int findval = 0;
+  while (memsize > tmpmul) {
+    order++;
+    tmpmul *= 2;
+  }
+  if (order > 7) return MEM_FAIL;
+
+  findval = findFreeMallocNode(pcb, 0, 7, order);
+  while ((findval & MEM_FINDFREE_MALLOC_STATUS) != MEM_FINDFREE_MALLOC_STATUS) {
+    if (findval == MEM_MALLOC_FIND_TAKEN) return MEM_FAIL; 
+    partitionNode(pcb, (findval & MEM_MALLOC_FIND_ORDER_MASK) >> 8, findval & MEM_MALLOC_FIND_INDEX_MASK);
+    findval = findFreeMallocNode(pcb, 0, 7, order);
+  }
+  currentPCB->malloc_meta[findval & MEM_MALLOC_FIND_INDEX_MASK] |= MEM_MALLOC_TAKEN;
+  return (uint32) pcb->heap_base | addressFromOrderIndex((findval & MEM_MALLOC_FIND_ORDER_MASK) >> 8, findval & MEM_MALLOC_FIND_INDEX_MASK);
+}
+
+uint32 mfree_recurse(PCB* pcb, int order, int index, int cleared) {
+  if (order > 7) return MEM_SUCCESS;
+
+  if (cleared == 0) { 
+    if (pcb->malloc_meta[index] == MEM_MALLOC_TAKEN) {
+      printf("Freed the block: order = %d, addr = %d, size = %d\n", order, addressFromOrderIndex(order, index), sizeFromOrder(order));
+      pcb->malloc_meta[index] = 0;
+      return mfree_recurse(pcb, order + 1, (index - 1)/2, 1);
+    }
+    return mfree_recurse(pcb, order + 1, (index - 1)/2, 0);
+  } else {
+    if (pcb->malloc_meta[2*index+1] == 0 && pcb->malloc_meta[2*index+2] == 0) {
+      printf("Coalesced buddy nodes (order = %d, addr = %d, size = %d) & (order = %d, addr = %d, size = %d)\n", order - 1, addressFromOrderIndex(order - 1, 2*index + 1), sizeFromOrder(order - 1), order - 1, addressFromOrderIndex(order - 1, 2*index + 2), sizeFromOrder(order - 1));
+      printf("into the parent node (order = %d, addr = %d, size = %d)\n", order, addressFromOrderIndex(order, index), sizeFromOrder(order));
+      pcb->malloc_meta[index] = 0;
+      return mfree_recurse(pcb, order + 1, (index - 1)/2, 1);
+    }
+    return MEM_SUCCESS;
+  }
 }
 
 uint32 mfree(PCB* pcb, void* mem) {
-  return MEM_FAIL;
+  int index;
+  uint32 mem2 = (uint32) mem;
+  if (mem2 < (uint32) pcb->heap_base || mem2 > ((uint32) pcb->heap_base + 4092)) return MEM_FAIL;
+  mem2 = mem2 & 0xfff;
+  index = ((uint32) (mem2))/32 + (255 - 128); 
+  return mfree_recurse(pcb, 0, index, 0); 
 }

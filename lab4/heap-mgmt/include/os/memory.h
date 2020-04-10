@@ -29,6 +29,11 @@ void MemoryFreePage(uint32 page);
 uint32 MemorySetupPte (uint32 page);
 void MemoryFreePte (uint32 pte);
 
+int findFreeMallocNode(PCB* pcb, int index, int order, int order_want);
+uint32 addressFromOrderIndex(int order, int index);
+uint32 sizeFromOrder(int order);
+int partitionNode(PCB* pcb, int order, int index);
+uint32 mfree_recurse(PCB* pcb, int order, int index, int cleared);
 uint32 malloc(PCB* pcb, int memsize);
 uint32 mfree(PCB* pcb, void* mem);
 
