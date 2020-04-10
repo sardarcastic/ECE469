@@ -294,6 +294,21 @@ uint32 MemorySetupPte (uint32 page) {
   return (page << MEM_L1FIELD_FIRST_BITNUM) | MEM_PTE_VALID;
 }
 
+int findFreeMallocNode(PCB* pcb, int index, int order, int order_want) {
+  int ret1, ret2;
+  
+  if (order == order_want && pcb->malloc_meta[index] == 0) {
+    return MEM_FINDFREE_MALLOC_STATUS | index;
+  }
+
+  if ((pcb->malloc_meta[index] == 0) return 0xffffffff;
+
+  int ret1 = findFreeMallocNode(pcb, 2*index + 1, order - 1, order_want);
+  if ((ret1 & MEM_FINDFREE_MALLOC_STATUS) == MEM_FINDFREE_MALLOC_STATUS) return ret1;
+  int ret2 = findFreeMallocNode(pcb, 2*index + 2, order - 1, order_want);
+  
+}
+
 uint32 malloc(PCB* pcb, int memsize) {
   return MEM_FAIL;
 }
