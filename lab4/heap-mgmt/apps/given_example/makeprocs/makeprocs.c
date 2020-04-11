@@ -5,7 +5,7 @@
 
 void main (int argc, char *argv[])
 {
-  int* a,b,c,d;
+  int* a,b,c,d,e;
 
   if (argc != 1) {
     Printf("Usage: %s \n", argv[0]);
@@ -15,6 +15,10 @@ void main (int argc, char *argv[])
 
   Printf("-------------------------------------------------------------------------------------\n");
 
+  e = (int*) malloc(5000);
+  if (e == NULL)
+    Printf("Allocated too many bytes and got a NULL pointer successfuly\n");
+  
   a = (int *) malloc(32);
   Printf("allcoated a\n");
   b = (int *) malloc(64);

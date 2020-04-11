@@ -351,7 +351,6 @@ static void ProcessExit () {
   exit ();
 }
 
-
 //----------------------------------------------------------------------
 //
 //	ProcessFork
@@ -366,6 +365,7 @@ static void ProcessExit () {
 //	for user processes.
 //
 //----------------------------------------------------------------------
+
 int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   int i;                   // Loop index variable
   int fd, n;               // Used for reading code from files.
@@ -614,6 +614,7 @@ int ProcessFork (VoidFunc func, uint32 param, char *name, int isUser) {
   // from the base of the PCB array).
   return (pcb - pcbs);
 }
+
 
 //----------------------------------------------------------------------
 //
