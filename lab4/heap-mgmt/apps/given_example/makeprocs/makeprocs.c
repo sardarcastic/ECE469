@@ -5,7 +5,10 @@
 
 void main (int argc, char *argv[])
 {
-  int* a,b,c,d;
+  int* a;
+  int* b;
+  int* c;
+  int *d;
   int q,w,e,r;
 
   if (argc != 1) {

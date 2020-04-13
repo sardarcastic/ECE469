@@ -340,16 +340,18 @@ int partitionNode(PCB* pcb, int order, int index) {
   return MEM_SUCCESS; 
 }
 
-uint32 malloc(PCB* pcb, int memsize) {
+void* malloc(PCB* pcb, int memsize) {
   int tmpmul = 32;
   int order = 0;
   int findval = 0;
+  uint32 addressToReturn;
   while (memsize > tmpmul) {
     order++;
     tmpmul *= 2;
   }
   if (order > 7) return NULL;
-
+  if (memsize < 0) return NULL;
+  
   findval = findFreeMallocNode(pcb, 0, 7, order);
   while ((findval & MEM_FINDFREE_MALLOC_STATUS) != MEM_FINDFREE_MALLOC_STATUS) {
     if (findval == MEM_MALLOC_FIND_TAKEN) return NULL; 
@@ -357,7 +359,9 @@ uint32 malloc(PCB* pcb, int memsize) {
     findval = findFreeMallocNode(pcb, 0, 7, order);
   }
   currentPCB->malloc_meta[findval & MEM_MALLOC_FIND_INDEX_MASK] |= MEM_MALLOC_TAKEN;
-  return (uint32) pcb->heap_base | addressFromOrderIndex((findval & MEM_MALLOC_FIND_ORDER_MASK) >> 8, findval & MEM_MALLOC_FIND_INDEX_MASK);
+
+  addressToReturn = (uint32) pcb->heap_base | addressFromOrderIndex((findval & MEM_MALLOC_FIND_ORDER_MASK) >> 8, findval & MEM_MALLOC_FIND_INDEX_MASK);
+  return (void*) addressToReturn;
 }
 
 uint32 mfree_recurse(PCB* pcb, int order, int index, int cleared) {
