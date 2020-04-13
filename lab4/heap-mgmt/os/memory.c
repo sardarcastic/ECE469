@@ -361,16 +361,20 @@ uint32 malloc(PCB* pcb, int memsize) {
 }
 
 uint32 mfree_recurse(PCB* pcb, int order, int index, int cleared) {
-  if (order > 7) return MEM_SUCCESS;
+  // If no block of this size has been allocated, then mfree should return a fail (-1)
+  if (order > 7)
+    return MEM_FAIL;
 
   if (cleared == 0) { 
     if (pcb->malloc_meta[index] == MEM_MALLOC_TAKEN) {
       printf("Freed the block: order = %d, addr = %d, size = %d\n", order, addressFromOrderIndex(order, index), sizeFromOrder(order));
       pcb->malloc_meta[index] = 0;
-      return mfree_recurse(pcb, order + 1, (index - 1)/2, 1);
+      mfree_recurse(pcb, order + 1, (index - 1)/2, 1);
+      return sizeFromOrder(order);
     }
     return mfree_recurse(pcb, order + 1, (index - 1)/2, 0);
-  } else {
+  }
+  else {
     if (pcb->malloc_meta[2*index+1] == 0 && pcb->malloc_meta[2*index+2] == 0) {
       printf("Coalesced buddy nodes (order = %d, addr = %d, size = %d) & (order = %d, addr = %d, size = %d)\n", order - 1, addressFromOrderIndex(order - 1, 2*index + 1), sizeFromOrder(order - 1), order - 1, addressFromOrderIndex(order - 1, 2*index + 2), sizeFromOrder(order - 1));
       printf("into the parent node (order = %d, addr = %d, size = %d)\n", order, addressFromOrderIndex(order, index), sizeFromOrder(order));
