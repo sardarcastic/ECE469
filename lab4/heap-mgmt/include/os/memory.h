@@ -34,7 +34,7 @@ uint32 addressFromOrderIndex(int order, int index);
 uint32 sizeFromOrder(int order);
 int partitionNode(PCB* pcb, int order, int index);
 uint32 mfree_recurse(PCB* pcb, int order, int index, int cleared);
-uint32 malloc(PCB* pcb, int memsize);
+void* malloc(PCB* pcb, int memsize);
 uint32 mfree(PCB* pcb, void* mem);
 
 #endif	// _memory_h_
